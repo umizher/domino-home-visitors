@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Dominó: Home vs Visitors</title>
+  <link rel="stylesheet" href="style.css"/>
+</head>
+<body>
+  <header class="bar">
+    <div>
+      <div class="h1">Dominó — Home vs Visitors</div>
+      <div class="sub">Meta 200+ o Tiempo • Editar/Borrar manos • Guarda automático</div>
+    </div>
+    <div class="btns">
+      <button id="exportCsv" class="secondary">⬇️ Export CSV</button>
+      <button id="reset" class="danger">🗑️ Reset</button>
+    </div>
+  </header>
+
+  <main class="wrap">
+
+    <section class="card">
+      <h2>1) Configuración (ANTES de empezar)</h2>
+
+      <div class="grid2">
+        <div class="team">
+          <div class="teamTitle">🏠 HOME</div>
+          <label>Jugador 1 <input id="h1" placeholder="Home 1"></label>
+          <label>Jugador 2 <input id="h2" placeholder="Home 2"></label>
+        </div>
+
+        <div class="team">
+          <div class="teamTitle">🚗 VISITORS</div>
+          <label>Jugador 1 <input id="v1" placeholder="Visitor 1"></label>
+          <label>Jugador 2 <input id="v2" placeholder="Visitor 2"></label>
+        </div>
+      </div>
+
+      <div class="modeBox">
+        <div class="modeTitle">Modo de finalización</div>
+
+        <div class="row">
+          <label class="radio">
+            <input type="radio" name="mode" id="modeTarget" checked>
+            Meta (200 o más)
+          </label>
+
+          <label class="small">Meta:
+            <input id="target" type="tel" inputmode="numeric" pattern="[0-9]*" value="200">
+          </label>
+        </div>
+
+        <div class="row">
+          <label class="radio">
+            <input type="radio" name="mode" id="modeTimer">
+            Tiempo (minutos)
+          </label>
+
+          <label class="small">Minutos:
+            <input id="minutes" type="tel" inputmode="numeric" pattern="[0-9]*" value="30">
+          </label>
+
+          <div class="timerBox" id="timerBox" style="display:none;">
+            ⏱️ <span id="timerValue">00:00</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="row">
+        <button id="saveConfig" class="secondary">💾 Guardar</button>
+        <button id="startGame">▶️ START</button>
+        <button id="pauseGame" class="secondary" disabled>⏸️ Pausa</button>
+        <button id="resumeGame" class="secondary" disabled>▶️ Reanudar</button>
+        <button id="reopen" class="secondary" style="display:none;">🔓 Reabrir para corregir</button>
+        <div class="hint" id="status">Estado: listo</div>
+      </div>
+
+      <div id="msg" class="msg" style="display:none"></div>
+    </section>
+
+    <section class="card">
+      <div class="scoreTop">
+        <div class="scoreBox">
+          <div class="label">🏠 HOME</div>
+          <div class="score" id="homeTotal">0</div>
+        </div>
+        <div class="scoreBox">
+          <div class="label">🚗 VISITORS</div>
+          <div class="score" id="visTotal">0</div>
+        </div>
+        <div class="scoreBox smallBox">
+          <div class="label">Mano #</div>
+          <div class="score" id="handNo">0</div>
+        </div>
+      </div>
+
+      <div class="row space">
+        <div class="hint" id="winnerHint"></div>
+      </div>
+
+      <h2>2) Anotar mano</h2>
+
+      <div class="grid2">
+        <div class="tableCard">
+          <div class="teamTitle">🏠 HOME suma</div>
+          <div class="quick">
+            <button class="q" data-side="HOME" data-add="5">+5</button>
+            <button class="q" data-side="HOME" data-add="10">+10</button>
+            <button class="q" data-side="HOME" data-add="15">+15</button>
+            <button class="q" data-side="HOME" data-add="20">+20</button>
+            <button class="q" data-side="HOME" data-add="25">+25</button>
+            <button class="q" data-side="HOME" data-add="30">+30</button>
+            <button class="q" data-side="HOME" data-add="50">+50</button>
+          </div>
+          <div class="row">
+            <input id="homePts" type="tel" inputmode="numeric" pattern="[0-9]*" placeholder="Puntos (ej 18)" />
+            <button id="addHome">➕ Añadir a Home</button>
+          </div>
+        </div>
+
+        <div class="tableCard">
+          <div class="teamTitle">🚗 VISITORS suma</div>
+          <div class="quick">
+            <button class="q" data-side="VISITORS" data-add="5">+5</button>
+            <button class="q" data-side="VISITORS" data-add="10">+10</button>
+            <button class="q" data-side="VISITORS" data-add="15">+15</button>
+            <button class="q" data-side="VISITORS" data-add="20">+20</button>
+            <button class="q" data-side="VISITORS" data-add="25">+25</button>
+            <button class="q" data-side="VISITORS" data-add="30">+30</button>
+            <button class="q" data-side="VISITORS" data-add="50">+50</button>
+          </div>
+          <div class="row">
+            <input id="visPts" type="tel" inputmode="numeric" pattern="[0-9]*" placeholder="Puntos (ej 22)" />
+            <button id="addVis">➕ Añadir a Visitors</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="row space" style="margin-top:10px;">
+        <button id="finishNow" class="secondary">🏁 Finalizar ahora</button>
+        <span class="hint">Tip: si ya terminó por meta/tiempo, usa “Reabrir para corregir”.</span>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>3) Historial de manos (editar / borrar)</h2>
+      <div class="tableWrap">
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Equipo</th>
+              <th>Puntos</th>
+              <th>Total Home</th>
+              <th>Total Visitors</th>
+              <th>Hora</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="hands"></tbody>
+        </table>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="foot">
+    Para recargar sin caché: agrega <b>?v=1</b> al link (y cambia el número cuando actualices).
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
