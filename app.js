@@ -1,5 +1,5 @@
 (() => {
-  const KEY = "domino_home_visitors_simple_v2";
+  const KEY = "domino_home_visitors_simple_v3";
 
   const $ = (id)=>document.getElementById(id);
   const toInt = (v)=>{
@@ -23,7 +23,7 @@
       paused: false,
       pausedAt: null
     },
-    hands: [], // {id,n,side:"HOME"/"VISITORS",pts,ts}
+    hands: [],
     started: false,
     finished: false,
     finishedReason: "",
@@ -74,7 +74,6 @@
     return `${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}`;
   }
 
-  // BEEP fuerte (iPhone: suena después de interacción)
   function loudBeep(){
     try{
       const ctx = new (window.AudioContext || window.webkitAudioContext)();
@@ -169,7 +168,6 @@
     state.finished = false;
     state.finishedReason = "";
     state.winner = null;
-    // Timer queda como estaba; si quieres seguir, puedes START de nuevo.
     save();
     render();
     showMsg("Reabierta para corregir 🟡");
@@ -182,7 +180,10 @@
     state.config.target = Math.max(1, toInt($("target").value) || 200);
 
     state.config.timerEnabled = $("enableTimer").checked === true;
-    state.config.minutes = Math.max(1, toInt($("minutes").value) || 30);
+
+    // ✅ minutos SIEMPRE editables; si está vacío, vuelve a 30
+    const m = toInt($("minutes").value);
+    state.config.minutes = Math.max(1, Number.isFinite(m) ? m : (state.config.minutes || 30));
 
     $("target").value = String(state.config.target);
     $("minutes").value = String(state.config.minutes);
@@ -195,7 +196,7 @@
   }
 
   function canEditConfig(){
-    return !state.started || state.finished; // antes de START o si terminó
+    return !state.started || state.finished;
   }
 
   function canAddHands(){
@@ -212,15 +213,12 @@
     save();
     render();
 
-    // Termina por lo que ocurra primero:
-    // 1) Meta 200+ SIEMPRE
     const {home, vis} = totals();
     const target = state.config.target || 200;
     if(home >= target || vis >= target){
       finish(`Llegaron a ${target}+`);
       return;
     }
-    // 2) El tiempo lo maneja el tick si está activado
   }
 
   function editHand(id){
@@ -244,7 +242,6 @@
     save();
     render();
 
-    // si por corrección alguien llegó a meta, termina
     if(!state.finished){
       const {home, vis} = totals();
       const target = state.config.target || 200;
@@ -269,22 +266,16 @@
       $(id).disabled = cfgDisabled;
     });
 
-    // minutes solo si timerEnabled y config editable
-    $("minutes").disabled = cfgDisabled || !$("enableTimer").checked;
-
-    // start/pause/resume
     $("startGame").disabled = state.started && !state.finished;
     $("pauseGame").disabled = !(state.config.timerEnabled && state.timer.running && !state.timer.paused && state.started && !state.finished);
     $("resumeGame").disabled = !(state.config.timerEnabled && state.timer.running && state.timer.paused && state.started && !state.finished);
 
     $("timerBox").style.display = (state.config.timerEnabled) ? "inline-flex" : "none";
 
-    // add hands
     const addDisabled = !canAddHands();
     ["homePts","visPts","addHome","addVis"].forEach(id=> $(id).disabled = addDisabled);
 
     $("finishNow").disabled = !(state.started && !state.finished);
-
     $("reopen").style.display = state.finished ? "inline-flex" : "none";
   }
 
@@ -300,7 +291,7 @@
     } else {
       t = `Meta ${target}+ siempre. `;
       if(state.config.timerEnabled) t += `Tiempo: ${state.config.minutes} min (lo que ocurra primero). `;
-      else t += `Tiempo: apagado. `;
+      else t += `Tiempo: apagado (pero puedes dejar minutos listos). `;
       if(!state.started) t += "(Pulsa START)";
       else {
         if(home>vis) t += `🏠 HOME arriba por ${home-vis}.`;
@@ -312,37 +303,30 @@
   }
 
   function render(){
-    // Fill fields
     $("homeName").value = state.config.homeName;
     $("visName").value  = state.config.visName;
-
     $("target").value = String(state.config.target ?? 200);
 
     $("enableTimer").checked = state.config.timerEnabled === true;
     $("minutes").value = String(state.config.minutes ?? 30);
-    $("minutes").disabled = !canEditConfig() || !state.config.timerEnabled;
 
-    // labels
     const L = labels();
     $("homeLabel").textContent = L.home;
     $("visLabel").textContent  = L.vis;
     $("homeCardTitle").textContent = L.home;
     $("visCardTitle").textContent  = L.vis;
 
-    // totals
     const {home, vis} = totals();
     $("homeTotal").textContent = String(home);
     $("visTotal").textContent  = String(vis);
     $("handNo").textContent    = String(state.hands.length);
 
-    // timer display
     if(state.config.timerEnabled){
       const now = Date.now();
       const left = state.timer.running ? ((state.timer.endsAt || now) - now) : (state.config.minutes*60*1000);
       $("timerValue").textContent = formatMMSS(left);
     }
 
-    // history with progressive totals
     let runH = 0, runV = 0;
     const rows = state.hands.map((h, i)=>{
       if(h.side==="HOME") runH += h.pts; else runV += h.pts;
@@ -374,7 +358,6 @@
       `);
     });
 
-    // status
     if(state.finished) setStatus("finalizada ✅");
     else if(!state.started) setStatus("configura y pulsa START");
     else setStatus("en juego");
@@ -382,7 +365,6 @@
     setControls();
     updateWinnerHint();
 
-    // tick
     if(state.config.timerEnabled && state.timer.running && !state.timer.paused && state.started && !state.finished){
       startTick();
     } else {
@@ -390,18 +372,11 @@
     }
   }
 
-  // ===== UI Events =====
-  ["target","minutes","homeName","visName"].forEach(id=>{
+  // sanitize numeric fields (pero deja editar normal)
+  ["target","minutes"].forEach(id=>{
     $(id).addEventListener("input", (e)=>{
-      if(id==="target" || id==="minutes") e.target.value = e.target.value.replace(/[^\d]/g,"");
+      e.target.value = e.target.value.replace(/[^\d]/g,"");
     });
-  });
-
-  $("enableTimer").addEventListener("change", ()=>{
-    if(!canEditConfig()) return;
-    const on = $("enableTimer").checked;
-    $("minutes").disabled = !on;
-    $("timerBox").style.display = on ? "inline-flex" : "none";
   });
 
   $("saveConfig").onclick = ()=>{
@@ -421,7 +396,6 @@
       initTimerFromNow();
       startTick();
     } else {
-      // asegúrate de apagar timer si estaba de antes
       state.timer.running = false;
       state.timer.paused = false;
       state.timer.startedAt = null;
@@ -434,15 +408,13 @@
   };
 
   $("pauseGame").onclick = ()=>{
-    pauseTimer();
-    save();
+    pauseTimer(); save();
     showMsg("Pausa ⏸️");
     render();
   };
 
   $("resumeGame").onclick = ()=>{
-    resumeTimer();
-    save();
+    resumeTimer(); save();
     showMsg("Reanudado ▶️");
     render();
   };
@@ -460,7 +432,6 @@
     addHand("VISITORS", v);
   };
 
-  // history buttons
   document.addEventListener("click", (e)=>{
     const btn = e.target.closest("button[data-act]");
     if(!btn) return;
@@ -519,7 +490,7 @@
     location.reload();
   };
 
-  // ===== Init =====
+  // Init
   load();
   render();
 })();
