@@ -10,7 +10,7 @@
   <header class="bar">
     <div>
       <div class="h1">Dominó — Home vs Visitors</div>
-      <div class="sub">Meta 200+ o Tiempo • Editar/Borrar manos • Guarda automático</div>
+      <div class="sub">200+ siempre • Tiempo opcional • Editar/Borrar manos • Guarda automático</div>
     </div>
     <div class="btns">
       <button id="exportCsv" class="secondary">⬇️ Export CSV</button>
@@ -21,44 +21,46 @@
   <main class="wrap">
 
     <section class="card">
-      <h2>1) Configuración (ANTES de empezar)</h2>
+      <h2>1) Ajustes (ANTES de empezar)</h2>
+
+      <div class="note">
+        Los nombres son <b>opcionales</b>. Si no pones nada, queda como <b>HOME</b> y <b>VISITORS</b>.
+      </div>
 
       <div class="grid2">
         <div class="team">
           <div class="teamTitle">🏠 HOME</div>
-          <label>Jugador 1 <input id="h1" placeholder="Home 1"></label>
-          <label>Jugador 2 <input id="h2" placeholder="Home 2"></label>
+          <label>Nombre (opcional)
+            <input id="homeName" placeholder="HOME (opcional)">
+          </label>
         </div>
 
         <div class="team">
           <div class="teamTitle">🚗 VISITORS</div>
-          <label>Jugador 1 <input id="v1" placeholder="Visitor 1"></label>
-          <label>Jugador 2 <input id="v2" placeholder="Visitor 2"></label>
+          <label>Nombre (opcional)
+            <input id="visName" placeholder="VISITORS (opcional)">
+          </label>
         </div>
       </div>
 
       <div class="modeBox">
-        <div class="modeTitle">Modo de finalización</div>
+        <div class="modeTitle">Finaliza por lo que ocurra primero</div>
 
         <div class="row">
-          <label class="radio">
-            <input type="radio" name="mode" id="modeTarget" checked>
-            Meta (200 o más)
-          </label>
-
+          <div class="pill">✅ Meta fija: <b>200+</b></div>
           <label class="small">Meta:
             <input id="target" type="tel" inputmode="numeric" pattern="[0-9]*" value="200">
           </label>
         </div>
 
         <div class="row">
-          <label class="radio">
-            <input type="radio" name="mode" id="modeTimer">
-            Tiempo (minutos)
+          <label class="toggle">
+            <input id="enableTimer" type="checkbox">
+            Activar tiempo (opcional)
           </label>
 
           <label class="small">Minutos:
-            <input id="minutes" type="tel" inputmode="numeric" pattern="[0-9]*" value="30">
+            <input id="minutes" type="tel" inputmode="numeric" pattern="[0-9]*" value="30" disabled>
           </label>
 
           <div class="timerBox" id="timerBox" style="display:none;">
@@ -82,11 +84,11 @@
     <section class="card">
       <div class="scoreTop">
         <div class="scoreBox">
-          <div class="label">🏠 HOME</div>
+          <div class="label" id="homeLabel">🏠 HOME</div>
           <div class="score" id="homeTotal">0</div>
         </div>
         <div class="scoreBox">
-          <div class="label">🚗 VISITORS</div>
+          <div class="label" id="visLabel">🚗 VISITORS</div>
           <div class="score" id="visTotal">0</div>
         </div>
         <div class="scoreBox smallBox">
@@ -99,47 +101,29 @@
         <div class="hint" id="winnerHint"></div>
       </div>
 
-      <h2>2) Anotar mano</h2>
+      <h2>2) Anotar mano (MANUAL)</h2>
 
       <div class="grid2">
         <div class="tableCard">
-          <div class="teamTitle">🏠 HOME suma</div>
-          <div class="quick">
-            <button class="q" data-side="HOME" data-add="5">+5</button>
-            <button class="q" data-side="HOME" data-add="10">+10</button>
-            <button class="q" data-side="HOME" data-add="15">+15</button>
-            <button class="q" data-side="HOME" data-add="20">+20</button>
-            <button class="q" data-side="HOME" data-add="25">+25</button>
-            <button class="q" data-side="HOME" data-add="30">+30</button>
-            <button class="q" data-side="HOME" data-add="50">+50</button>
-          </div>
+          <div class="teamTitle" id="homeCardTitle">🏠 HOME</div>
           <div class="row">
             <input id="homePts" type="tel" inputmode="numeric" pattern="[0-9]*" placeholder="Puntos (ej 18)" />
-            <button id="addHome">➕ Añadir a Home</button>
+            <button id="addHome">➕ Añadir</button>
           </div>
         </div>
 
         <div class="tableCard">
-          <div class="teamTitle">🚗 VISITORS suma</div>
-          <div class="quick">
-            <button class="q" data-side="VISITORS" data-add="5">+5</button>
-            <button class="q" data-side="VISITORS" data-add="10">+10</button>
-            <button class="q" data-side="VISITORS" data-add="15">+15</button>
-            <button class="q" data-side="VISITORS" data-add="20">+20</button>
-            <button class="q" data-side="VISITORS" data-add="25">+25</button>
-            <button class="q" data-side="VISITORS" data-add="30">+30</button>
-            <button class="q" data-side="VISITORS" data-add="50">+50</button>
-          </div>
+          <div class="teamTitle" id="visCardTitle">🚗 VISITORS</div>
           <div class="row">
             <input id="visPts" type="tel" inputmode="numeric" pattern="[0-9]*" placeholder="Puntos (ej 22)" />
-            <button id="addVis">➕ Añadir a Visitors</button>
+            <button id="addVis">➕ Añadir</button>
           </div>
         </div>
       </div>
 
       <div class="row space" style="margin-top:10px;">
         <button id="finishNow" class="secondary">🏁 Finalizar ahora</button>
-        <span class="hint">Tip: si ya terminó por meta/tiempo, usa “Reabrir para corregir”.</span>
+        <span class="hint">Tip: si ya terminó, usa “Reabrir para corregir”.</span>
       </div>
     </section>
 
@@ -166,7 +150,7 @@
   </main>
 
   <footer class="foot">
-    Para recargar sin caché: agrega <b>?v=1</b> al link (y cambia el número cuando actualices).
+    Para forzar sin caché: agrega <b>?v=1</b> al link y cambia el número cuando actualices.
   </footer>
 
   <script src="app.js"></script>
