@@ -16,6 +16,9 @@ button:disabled{ opacity:.5; cursor:not-allowed; }
 .card{ background:#fff; border:1px solid var(--b); border-radius:14px; padding:12px; margin-bottom:12px; }
 h2{ margin:0 0 10px; font-size:16px; }
 
+.note{ font-size:13px; color:#374151; background:#f9fafb; border:1px solid var(--b); padding:10px; border-radius:12px; margin-bottom:10px; }
+.pill{ display:inline-flex; align-items:center; gap:8px; font-weight:900; font-size:13px; padding:6px 10px; border-radius:999px; border:1px solid var(--b); background:#fff; }
+
 .grid2{ display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
 @media(max-width:720px){ .grid2{ grid-template-columns:1fr; } }
 
@@ -24,7 +27,7 @@ h2{ margin:0 0 10px; font-size:16px; }
 
 label{ display:flex; flex-direction:column; gap:6px; font-size:13px; font-weight:900; }
 input{ border:1px solid var(--b); border-radius:12px; padding:12px; font-size:18px; background:#fff; }
-.small input{ font-size:16px; padding:10px; width:110px; }
+.small input{ font-size:16px; padding:10px; width:120px; }
 
 .row{ display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
 .row.space{ justify-content:space-between; }
@@ -33,7 +36,10 @@ input{ border:1px solid var(--b); border-radius:12px; padding:12px; font-size:18
 
 .modeBox{ border:1px solid var(--b); border-radius:12px; padding:10px; margin-top:10px; }
 .modeTitle{ font-weight:1000; margin-bottom:8px; }
-.radio{ flex-direction:row; align-items:center; gap:8px; font-weight:1000; }
+
+.toggle{ flex-direction:row; align-items:center; gap:10px; font-weight:1000; }
+.toggle input{ width:18px; height:18px; }
+
 .timerBox{ margin-left:auto; font-weight:1000; border:1px solid var(--b); padding:6px 10px; border-radius:999px; }
 
 .scoreTop{ display:grid; grid-template-columns:1fr 1fr .7fr; gap:10px; margin-bottom:12px; }
@@ -43,9 +49,6 @@ input{ border:1px solid var(--b); border-radius:12px; padding:12px; font-size:18
 .smallBox .score{ font-size:28px; }
 
 .tableCard{ border:1px solid var(--b); border-radius:14px; padding:10px; }
-.quick{ display:flex; gap:8px; flex-wrap:wrap; margin:8px 0; }
-.q{ background:#fff; color:#111827; }
-
 .tableWrap{ overflow:auto; border:1px solid var(--b); border-radius:12px; }
 table{ width:100%; border-collapse:collapse; font-size:13px; }
 th,td{ border-bottom:1px solid var(--b); padding:8px; text-align:left; vertical-align:top; }
@@ -55,4 +58,5 @@ thead th{ background:#f9fafb; position:sticky; top:0; }
 .badge.home{ background:#eff6ff; border-color:#93c5fd; }
 .badge.vis{ background:#fff7ed; border-color:#fdba74; }
 
+.smallBtn{ padding:6px 8px; border-radius:10px; font-size:12px; }
 .foot{ padding:10px 12px; color:var(--m); font-size:12px; text-align:center; }
