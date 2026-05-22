@@ -31,7 +31,7 @@
   function names() {
     return {
       home: state.config.homeName || "HOME",
-      vis: state.config.visName || "VISITORS"
+      vis:  state.config.visName  || "VISITORS"
     };
   }
 
@@ -66,72 +66,75 @@
   function render() {
     const { home, vis } = totals();
     const N = names();
-    const target = state.config.target;
 
-    $("homeLabel").textContent = N.home;
-    $("visLabel").textContent = N.vis;
-    $("homeTotal").textContent = home;
-    $("visTotal").textContent = vis;
-    $("handCount").textContent = `#${state.hands.length}`;
-    $("homeBadge").textContent = N.home;
-    $("visBadge").textContent = N.vis;
-    $("thHome").textContent = N.home;
-    $("thVis").textContent = N.vis;
+    // Labels
+    $("homeLabel").textContent  = N.home;
+    $("visLabel").textContent   = N.vis;
+    $("homeTotal").textContent  = home;
+    $("visTotal").textContent   = vis;
+    $("homeBadge").textContent  = N.home;
+    $("visBadge").textContent   = N.vis;
+    $("thHome").textContent     = N.home;
+    $("thVis").textContent      = N.vis;
+    $("handCount").textContent  = `${state.hands.length} mano${state.hands.length !== 1 ? "s" : ""}`;
 
-    const cardHome = $("cardHome");
-    const cardVis = $("cardVis");
-    cardHome.classList.remove("leading", "winning");
-    cardVis.classList.remove("leading", "winning");
+    // Leading highlight
+    const teamHome = $("teamHome");
+    const teamVis  = $("teamVis");
+    teamHome.classList.remove("leading");
+    teamVis.classList.remove("leading");
 
-    if (state.finished) {
-      if (state.winner === "HOME") cardHome.classList.add("winning");
-      else if (state.winner === "VISITORS") cardVis.classList.add("winning");
-    } else if (state.started) {
-      if (home > vis) cardHome.classList.add("leading");
-      else if (vis > home) cardVis.classList.add("leading");
-    }
-
-    const bar = $("winnerBar");
+    const leadBar = $("leadBar");
     if (state.started && !state.finished) {
-      if (home > vis) bar.textContent = `${N.home} arriba por ${home - vis} pts`;
-      else if (vis > home) bar.textContent = `${N.vis} arriba por ${vis - home} pts`;
-      else if (home === 0) bar.textContent = `Meta: ${target} puntos`;
-      else bar.textContent = "Empate";
-      bar.style.display = "block";
+      if (home > vis) {
+        leadBar.textContent = `${N.home} arriba por ${home - vis} pts`;
+        teamHome.classList.add("leading");
+      } else if (vis > home) {
+        leadBar.textContent = `${N.vis} arriba por ${vis - home} pts`;
+        teamVis.classList.add("leading");
+      } else {
+        leadBar.textContent = home === 0 ? `Meta: ${state.config.target} puntos` : "Empate";
+      }
+      leadBar.style.display = "block";
     } else {
-      bar.style.display = "none";
+      leadBar.style.display = "none";
     }
 
-    $("configSection").style.display = state.started ? "none" : "block";
-    $("gameSection").style.display = (state.started && !state.finished) ? "block" : "none";
-    $("winnerSection").style.display = state.finished ? "block" : "none";
-    $("histSection").style.display = state.hands.length > 0 ? "block" : "none";
+    // Screens
+    $("setup").style.display  = state.started                        ? "none" : "flex";
+    $("game").style.display   = (state.started && !state.finished)   ? "flex" : "none";
+    $("winner").style.display = state.finished                       ? "flex" : "none";
 
+    // Winner screen
     if (state.finished) {
-      const winName = state.winner === "HOME" ? N.home : state.winner === "VISITORS" ? N.vis : null;
-      $("winnerEmoji").textContent = state.winner === "TIE" ? "🤝" : "🏆";
-      $("winnerText").textContent = state.winner === "TIE"
-        ? `Empate ${home} - ${vis}`
-        : `¡Ganó ${winName}! ${home} - ${vis}`;
+      const winName = state.winner === "HOME" ? N.home
+                    : state.winner === "VISITORS" ? N.vis : null;
+      $("wTrophy").textContent = state.winner === "TIE" ? "🤝" : "🏆";
+      $("wWho").textContent    = state.winner === "TIE" ? "Empate" : `¡Ganó ${winName}!`;
+      $("wPts").textContent    = `${home} — ${vis}`;
+      $("wWho").style.color    = state.winner === "HOME"      ? "var(--home)"
+                               : state.winner === "VISITORS"  ? "var(--vis)"
+                               : "var(--muted)";
     }
 
+    // History
+    $("hist").style.display = state.hands.length > 0 ? "block" : "none";
     let runH = 0, runV = 0;
     const rows = state.hands.map((h, i) => {
       if (h.side === "HOME") runH += h.pts; else runV += h.pts;
-      return { n: i + 1, side: h.side, pts: h.pts, homeTotal: runH, visTotal: runV };
+      return { n: i + 1, side: h.side, pts: h.pts, rH: runH, rV: runV };
     });
     const tbody = $("hands");
     tbody.innerHTML = "";
     rows.slice().reverse().forEach(r => {
-      const cls = r.side === "HOME" ? "badge home" : "badge vis";
-      const name = r.side === "HOME" ? N.home : N.vis;
+      const isHome = r.side === "HOME";
       tbody.insertAdjacentHTML("beforeend", `
         <tr>
           <td>${r.n}</td>
-          <td><span class="${cls}">${name}</span></td>
+          <td><span class="dot ${isHome ? "home" : "vis"}"></span>${isHome ? N.home : N.vis}</td>
           <td><b>${r.pts}</b></td>
-          <td>${r.homeTotal}</td>
-          <td>${r.visTotal}</td>
+          <td>${r.rH}</td>
+          <td>${r.rV}</td>
         </tr>
       `);
     });
@@ -139,19 +142,21 @@
     $("undo").disabled = state.hands.length === 0;
   }
 
+  // Setup
   $("target").addEventListener("input", e => {
     e.target.value = e.target.value.replace(/[^\d]/g, "");
   });
 
   $("startGame").onclick = () => {
     state.config.homeName = $("homeName").value.trim();
-    state.config.visName = $("visName").value.trim();
-    state.config.target = Math.max(1, toInt($("target").value) || 200);
+    state.config.visName  = $("visName").value.trim();
+    state.config.target   = Math.max(1, toInt($("target").value) || 200);
     state.started = true;
     save();
     render();
   };
 
+  // Add points
   $("addHome").onclick = () => {
     const v = $("homePts").value;
     $("homePts").value = "";
@@ -167,13 +172,10 @@
   };
 
   $("homePts").addEventListener("keydown", e => { if (e.key === "Enter") $("addHome").click(); });
-  $("visPts").addEventListener("keydown", e => { if (e.key === "Enter") $("addVis").click(); });
+  $("visPts").addEventListener("keydown",  e => { if (e.key === "Enter") $("addVis").click();  });
 
-  $("undo").onclick = undo;
-
-  $("finishNow").onclick = () => {
-    if (state.started && !state.finished) finish();
-  };
+  $("undo").onclick      = undo;
+  $("finishNow").onclick = () => { if (state.started && !state.finished) finish(); };
 
   const resetGame = () => {
     if (confirm("¿Nueva partida? Se borra el marcador actual.")) {
@@ -181,8 +183,8 @@
       location.reload();
     }
   };
+  $("reset").onclick   = resetGame;
   $("newGame").onclick = resetGame;
-  $("reset").onclick = resetGame;
 
   load();
   render();

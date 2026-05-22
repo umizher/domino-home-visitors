@@ -2,82 +2,91 @@
 <html lang="es">
 <head>
   <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
   <title>Dominó</title>
   <link rel="manifest" href="manifest.json"/>
-  <meta name="theme-color" content="#1a1a2e"/>
+  <meta name="theme-color" content="#18181B"/>
   <meta name="apple-mobile-web-app-capable" content="yes"/>
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="black"/>
   <link rel="apple-touch-icon" href="icon.svg"/>
   <link rel="stylesheet" href="style.css"/>
 </head>
 <body>
-  <header class="bar">
-    <div class="title">Dominó</div>
-    <button id="reset" class="btn-danger">Nueva partida</button>
-  </header>
 
-  <main class="wrap">
+  <!-- Setup -->
+  <div id="setup">
+    <div class="setup-inner">
+      <div class="logo">Dominó</div>
+      <p class="logo-sub">Marcador de partidas</p>
+
+      <div class="fields">
+        <div class="field">
+          <label for="homeName">Equipo local</label>
+          <input id="homeName" placeholder="HOME" autocomplete="off" spellcheck="false"/>
+        </div>
+        <div class="field">
+          <label for="visName">Equipo visitante</label>
+          <input id="visName" placeholder="VISITORS" autocomplete="off" spellcheck="false"/>
+        </div>
+        <div class="field">
+          <label for="target">Meta de puntos</label>
+          <input id="target" type="tel" inputmode="numeric" pattern="[0-9]*" value="200"/>
+        </div>
+      </div>
+
+      <button id="startGame" class="btn-cta">Iniciar partida</button>
+    </div>
+  </div>
+
+  <!-- Game -->
+  <div id="game" style="display:none">
+
+    <header class="topbar">
+      <span class="topbar-title">Dominó</span>
+      <button id="reset" class="btn-ghost-sm">Nueva partida</button>
+    </header>
 
     <div class="scores">
-      <div class="team-card" id="cardHome">
-        <div class="team-name" id="homeLabel">HOME</div>
+      <div class="team" id="teamHome">
+        <div class="team-label" id="homeLabel">HOME</div>
         <div class="team-score" id="homeTotal">0</div>
       </div>
-      <div class="vs">VS</div>
-      <div class="team-card" id="cardVis">
-        <div class="team-name" id="visLabel">VISITORS</div>
+      <div class="scores-sep"></div>
+      <div class="team" id="teamVis">
+        <div class="team-label" id="visLabel">VISITORS</div>
         <div class="team-score" id="visTotal">0</div>
       </div>
     </div>
 
-    <div class="winner-bar" id="winnerBar"></div>
+    <div class="lead-bar" id="leadBar"></div>
 
-    <section class="card" id="configSection">
-      <h2>Configurar partida</h2>
-      <div class="grid2">
-        <label>Equipo local
-          <input id="homeName" placeholder="HOME"/>
-        </label>
-        <label>Equipo visitante
-          <input id="visName" placeholder="VISITORS"/>
-        </label>
+    <div class="inputs">
+      <div class="inp-row">
+        <input id="homePts" class="inp inp-home" type="tel" inputmode="numeric"
+               pattern="[0-9]*" placeholder="Puntos"/>
+        <button id="addHome" class="btn-add btn-add-home">
+          + <span id="homeBadge">HOME</span>
+        </button>
       </div>
-      <label class="inline">Meta de puntos:
-        <input id="target" type="tel" inputmode="numeric" pattern="[0-9]*" value="200"/>
-      </label>
-      <button id="startGame" class="btn-primary">▶ Iniciar partida</button>
-    </section>
-
-    <section class="card" id="gameSection" style="display:none">
-      <h2>Anotar mano <span class="hand-count" id="handCount">#0</span></h2>
-      <div class="grid2">
-        <div class="input-group">
-          <div class="team-badge home" id="homeBadge">HOME</div>
-          <input id="homePts" type="tel" inputmode="numeric" pattern="[0-9]*" placeholder="Puntos"/>
-          <button id="addHome" class="btn-home">Añadir</button>
-        </div>
-        <div class="input-group">
-          <div class="team-badge vis" id="visBadge">VISITORS</div>
-          <input id="visPts" type="tel" inputmode="numeric" pattern="[0-9]*" placeholder="Puntos"/>
-          <button id="addVis" class="btn-vis">Añadir</button>
-        </div>
+      <div class="inp-row">
+        <input id="visPts" class="inp inp-vis" type="tel" inputmode="numeric"
+               pattern="[0-9]*" placeholder="Puntos"/>
+        <button id="addVis" class="btn-add btn-add-vis">
+          + <span id="visBadge">VISITORS</span>
+        </button>
       </div>
-      <div class="row">
-        <button id="undo" class="btn-secondary">↩ Deshacer</button>
-        <button id="finishNow" class="btn-secondary">🏁 Finalizar</button>
+      <div class="acts">
+        <button id="undo" class="btn-act">↩ Deshacer</button>
+        <button id="finishNow" class="btn-act">Finalizar</button>
       </div>
-    </section>
+    </div>
 
-    <section class="card winner-card" id="winnerSection" style="display:none">
-      <div class="winner-emoji" id="winnerEmoji">🏆</div>
-      <div class="winner-text" id="winnerText"></div>
-      <button id="newGame" class="btn-primary">Nueva partida</button>
-    </section>
-
-    <section class="card" id="histSection" style="display:none">
-      <h2>Historial</h2>
-      <div class="tableWrap">
+    <div class="hist" id="hist" style="display:none">
+      <div class="hist-head">
+        <span>Historial</span>
+        <span id="handCount" class="hist-count"></span>
+      </div>
+      <div class="table-wrap">
         <table>
           <thead>
             <tr>
@@ -91,15 +100,23 @@
           <tbody id="hands"></tbody>
         </table>
       </div>
-    </section>
+    </div>
 
-  </main>
+  </div>
+
+  <!-- Winner -->
+  <div id="winner" style="display:none">
+    <div class="winner-inner">
+      <div class="w-trophy" id="wTrophy">🏆</div>
+      <div class="w-who" id="wWho"></div>
+      <div class="w-pts" id="wPts"></div>
+      <button id="newGame" class="btn-cta">Nueva partida</button>
+    </div>
+  </div>
 
   <script src="app.js"></script>
   <script>
-    if ("serviceWorker" in navigator) {
-      navigator.serviceWorker.register("sw.js");
-    }
+    if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js");
   </script>
 </body>
 </html>
