@@ -3,143 +3,89 @@
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>Dominó: Home vs Visitors</title>
+  <title>Dominó</title>
+  <link rel="manifest" href="manifest.json"/>
+  <meta name="theme-color" content="#1a1a2e"/>
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+  <link rel="apple-touch-icon" href="icon.svg"/>
   <link rel="stylesheet" href="style.css"/>
 </head>
 <body>
   <header class="bar">
-    <div>
-      <div class="h1">Dominó — Home vs Visitors</div>
-      <div class="sub">200+ siempre • Tiempo opcional • Editar/Borrar manos • Guarda automático</div>
-    </div>
-    <div class="btns">
-      <button id="exportCsv" class="secondary">⬇️ Export CSV</button>
-      <button id="reset" class="danger">🗑️ Reset</button>
-    </div>
+    <div class="title">Dominó</div>
+    <button id="reset" class="btn-danger">Nueva partida</button>
   </header>
 
   <main class="wrap">
 
-    <section class="card">
-      <h2>1) Ajustes (ANTES de empezar)</h2>
-
-      <div class="note">
-        Los nombres son <b>opcionales</b>. Si no pones nada, queda como <b>HOME</b> y <b>VISITORS</b>.
+    <div class="scores">
+      <div class="team-card" id="cardHome">
+        <div class="team-name" id="homeLabel">HOME</div>
+        <div class="team-score" id="homeTotal">0</div>
       </div>
+      <div class="vs">VS</div>
+      <div class="team-card" id="cardVis">
+        <div class="team-name" id="visLabel">VISITORS</div>
+        <div class="team-score" id="visTotal">0</div>
+      </div>
+    </div>
 
+    <div class="winner-bar" id="winnerBar"></div>
+
+    <section class="card" id="configSection">
+      <h2>Configurar partida</h2>
       <div class="grid2">
-        <div class="team">
-          <div class="teamTitle">🏠 HOME</div>
-          <label>Nombre (opcional)
-            <input id="homeName" placeholder="HOME (opcional)">
-          </label>
-        </div>
+        <label>Equipo local
+          <input id="homeName" placeholder="HOME"/>
+        </label>
+        <label>Equipo visitante
+          <input id="visName" placeholder="VISITORS"/>
+        </label>
+      </div>
+      <label class="inline">Meta de puntos:
+        <input id="target" type="tel" inputmode="numeric" pattern="[0-9]*" value="200"/>
+      </label>
+      <button id="startGame" class="btn-primary">▶ Iniciar partida</button>
+    </section>
 
-        <div class="team">
-          <div class="teamTitle">🚗 VISITORS</div>
-          <label>Nombre (opcional)
-            <input id="visName" placeholder="VISITORS (opcional)">
-          </label>
+    <section class="card" id="gameSection" style="display:none">
+      <h2>Anotar mano <span class="hand-count" id="handCount">#0</span></h2>
+      <div class="grid2">
+        <div class="input-group">
+          <div class="team-badge home" id="homeBadge">HOME</div>
+          <input id="homePts" type="tel" inputmode="numeric" pattern="[0-9]*" placeholder="Puntos"/>
+          <button id="addHome" class="btn-home">Añadir</button>
+        </div>
+        <div class="input-group">
+          <div class="team-badge vis" id="visBadge">VISITORS</div>
+          <input id="visPts" type="tel" inputmode="numeric" pattern="[0-9]*" placeholder="Puntos"/>
+          <button id="addVis" class="btn-vis">Añadir</button>
         </div>
       </div>
-
-      <div class="modeBox">
-        <div class="modeTitle">Finaliza por lo que ocurra primero</div>
-
-        <div class="row">
-          <div class="pill">✅ Meta fija: <b>200+</b></div>
-          <label class="small">Meta:
-            <input id="target" type="tel" inputmode="numeric" pattern="[0-9]*" value="200">
-          </label>
-        </div>
-
-        <div class="row">
-          <label class="toggle">
-            <input id="enableTimer" type="checkbox">
-            Activar tiempo (opcional)
-          </label>
-
-          <label class="small">Minutos:
-            <input id="minutes" type="tel" inputmode="numeric" pattern="[0-9]*" value="30">
-          </label>
-
-          <div class="timerBox" id="timerBox" style="display:none;">
-            ⏱️ <span id="timerValue">00:00</span>
-          </div>
-        </div>
-      </div>
-
       <div class="row">
-        <button id="saveConfig" class="secondary">💾 Guardar</button>
-        <button id="startGame">▶️ START</button>
-        <button id="pauseGame" class="secondary" disabled>⏸️ Pausa</button>
-        <button id="resumeGame" class="secondary" disabled>▶️ Reanudar</button>
-        <button id="reopen" class="secondary" style="display:none;">🔓 Reabrir para corregir</button>
-        <div class="hint" id="status">Estado: listo</div>
-      </div>
-
-      <div id="msg" class="msg" style="display:none"></div>
-    </section>
-
-    <section class="card">
-      <div class="scoreTop">
-        <div class="scoreBox">
-          <div class="label" id="homeLabel">🏠 HOME</div>
-          <div class="score" id="homeTotal">0</div>
-        </div>
-        <div class="scoreBox">
-          <div class="label" id="visLabel">🚗 VISITORS</div>
-          <div class="score" id="visTotal">0</div>
-        </div>
-        <div class="scoreBox smallBox">
-          <div class="label">Mano #</div>
-          <div class="score" id="handNo">0</div>
-        </div>
-      </div>
-
-      <div class="row space">
-        <div class="hint" id="winnerHint"></div>
-      </div>
-
-      <h2>2) Anotar mano (MANUAL)</h2>
-
-      <div class="grid2">
-        <div class="tableCard">
-          <div class="teamTitle" id="homeCardTitle">🏠 HOME</div>
-          <div class="row">
-            <input id="homePts" type="tel" inputmode="numeric" pattern="[0-9]*" placeholder="Puntos (ej 18)" />
-            <button id="addHome">➕ Añadir</button>
-          </div>
-        </div>
-
-        <div class="tableCard">
-          <div class="teamTitle" id="visCardTitle">🚗 VISITORS</div>
-          <div class="row">
-            <input id="visPts" type="tel" inputmode="numeric" pattern="[0-9]*" placeholder="Puntos (ej 22)" />
-            <button id="addVis">➕ Añadir</button>
-          </div>
-        </div>
-      </div>
-
-      <div class="row space" style="margin-top:10px;">
-        <button id="finishNow" class="secondary">🏁 Finalizar ahora</button>
-        <span class="hint">Tip: si ya terminó, usa “Reabrir para corregir”.</span>
+        <button id="undo" class="btn-secondary">↩ Deshacer</button>
+        <button id="finishNow" class="btn-secondary">🏁 Finalizar</button>
       </div>
     </section>
 
-    <section class="card">
-      <h2>3) Historial de manos (editar / borrar)</h2>
+    <section class="card winner-card" id="winnerSection" style="display:none">
+      <div class="winner-emoji" id="winnerEmoji">🏆</div>
+      <div class="winner-text" id="winnerText"></div>
+      <button id="newGame" class="btn-primary">Nueva partida</button>
+    </section>
+
+    <section class="card" id="histSection" style="display:none">
+      <h2>Historial</h2>
       <div class="tableWrap">
         <table>
           <thead>
             <tr>
               <th>#</th>
               <th>Equipo</th>
-              <th>Puntos</th>
-              <th>Total Home</th>
-              <th>Total Visitors</th>
-              <th>Hora</th>
-              <th></th>
+              <th>Pts</th>
+              <th id="thHome">HOME</th>
+              <th id="thVis">VISITORS</th>
             </tr>
           </thead>
           <tbody id="hands"></tbody>
@@ -149,10 +95,11 @@
 
   </main>
 
-  <footer class="foot">
-    Para forzar sin caché: agrega <b>?v=1</b> al link y cambia el número cuando actualices.
-  </footer>
-
   <script src="app.js"></script>
+  <script>
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("sw.js");
+    }
+  </script>
 </body>
 </html>
