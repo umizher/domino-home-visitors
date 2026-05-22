@@ -30,7 +30,7 @@
         </div>
         <div class="field">
           <label for="target">Meta de puntos</label>
-          <input id="target" type="tel" inputmode="numeric" pattern="[0-9]*" value="200"/>
+          <input id="target" type="text" inputmode="numeric" pattern="[0-9]*" value="200"/>
         </div>
       </div>
 
@@ -62,15 +62,15 @@
 
     <div class="inputs">
       <div class="inp-row">
-        <input id="homePts" class="inp inp-home" type="tel" inputmode="numeric"
-               pattern="[0-9]*" placeholder="Puntos"/>
+        <input id="homePts" class="inp inp-home" type="text" inputmode="numeric"
+               pattern="[0-9]*" placeholder="Puntos" autocomplete="off"/>
         <button id="addHome" class="btn-add btn-add-home">
           + <span id="homeBadge">HOME</span>
         </button>
       </div>
       <div class="inp-row">
-        <input id="visPts" class="inp inp-vis" type="tel" inputmode="numeric"
-               pattern="[0-9]*" placeholder="Puntos"/>
+        <input id="visPts" class="inp inp-vis" type="text" inputmode="numeric"
+               pattern="[0-9]*" placeholder="Puntos" autocomplete="off"/>
         <button id="addVis" class="btn-add btn-add-vis">
           + <span id="visBadge">VISITORS</span>
         </button>
@@ -95,6 +95,7 @@
               <th>Pts</th>
               <th id="thHome">HOME</th>
               <th id="thVis">VISITORS</th>
+              <th></th>
             </tr>
           </thead>
           <tbody id="hands"></tbody>

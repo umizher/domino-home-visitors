@@ -63,6 +63,30 @@
     render();
   }
 
+  function editHand(id) {
+    const h = state.hands.find(h => h.id === id);
+    if (!h) return;
+    const n = state.hands.indexOf(h) + 1;
+    const val = prompt(`Mano #${n} — nuevo valor de puntos:`, String(h.pts));
+    if (val === null) return;
+    const p = toInt(val);
+    if (!Number.isFinite(p) || p <= 0) { alert("Puntos inválidos (> 0)."); return; }
+    h.pts = p;
+    save();
+    render();
+    const { home, vis } = totals();
+    if (!state.finished && (home >= state.config.target || vis >= state.config.target)) finish();
+  }
+
+  function deleteHand(id) {
+    const idx = state.hands.findIndex(h => h.id === id);
+    if (idx < 0) return;
+    if (!confirm("¿Eliminar este puntaje?")) return;
+    state.hands.splice(idx, 1);
+    save();
+    render();
+  }
+
   function render() {
     const { home, vis } = totals();
     const N = names();
@@ -122,7 +146,7 @@
     let runH = 0, runV = 0;
     const rows = state.hands.map((h, i) => {
       if (h.side === "HOME") runH += h.pts; else runV += h.pts;
-      return { n: i + 1, side: h.side, pts: h.pts, rH: runH, rV: runV };
+      return { id: h.id, n: i + 1, side: h.side, pts: h.pts, rH: runH, rV: runV };
     });
     const tbody = $("hands");
     tbody.innerHTML = "";
@@ -135,6 +159,10 @@
           <td><b>${r.pts}</b></td>
           <td>${r.rH}</td>
           <td>${r.rV}</td>
+          <td class="td-acts">
+            <button class="btn-row btn-row-edit" data-act="edit" data-id="${r.id}">✏</button>
+            <button class="btn-row btn-row-del"  data-act="del"  data-id="${r.id}">✕</button>
+          </td>
         </tr>
       `);
     });
@@ -173,6 +201,13 @@
 
   $("homePts").addEventListener("keydown", e => { if (e.key === "Enter") $("addHome").click(); });
   $("visPts").addEventListener("keydown",  e => { if (e.key === "Enter") $("addVis").click();  });
+
+  $("hands").addEventListener("click", e => {
+    const btn = e.target.closest("button[data-act]");
+    if (!btn) return;
+    if (btn.dataset.act === "edit") editHand(btn.dataset.id);
+    if (btn.dataset.act === "del")  deleteHand(btn.dataset.id);
+  });
 
   $("undo").onclick      = undo;
   $("finishNow").onclick = () => { if (state.started && !state.finished) finish(); };

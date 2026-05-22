@@ -12,6 +12,12 @@
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
+input {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+}
+
 html, body {
   height: 100%;
   background: var(--bg);
@@ -68,7 +74,8 @@ html, body {
   color: var(--muted);
 }
 .field input {
-  background: var(--surface);
+  -webkit-appearance: none;
+  background-color: var(--surface);
   border: 1px solid var(--border);
   border-radius: 14px;
   padding: 14px 16px;
@@ -195,7 +202,8 @@ html, body {
 }
 .inp {
   flex: 1;
-  background: var(--surface);
+  -webkit-appearance: none;
+  background-color: var(--surface);
   border: 1px solid var(--border);
   border-radius: 12px;
   padding: 14px 16px;
@@ -274,6 +282,22 @@ th {
   color: var(--dim);
 }
 tr:last-child td { border-bottom: none; }
+
+.td-acts { white-space: nowrap; text-align: right; }
+.btn-row {
+  border: none;
+  background: none;
+  padding: 5px 7px;
+  border-radius: 7px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background .15s, color .15s;
+  line-height: 1;
+}
+.btn-row-edit { color: var(--dim); }
+.btn-row-edit:active { background: rgba(245,158,11,.18); color: var(--home); }
+.btn-row-del  { color: var(--dim); }
+.btn-row-del:active  { background: rgba(239,68,68,.18); color: #EF4444; }
 
 .dot {
   display: inline-block;
