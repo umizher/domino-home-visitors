@@ -16,8 +16,10 @@
   function load() {
     try {
       const s = JSON.parse(localStorage.getItem(KEY) || "null");
-      if (s && s.config && Array.isArray(s.hands)) Object.assign(state, s);
-    } catch {}
+      if (s && s.config && typeof s.started === "boolean" && Array.isArray(s.hands)) {
+        Object.assign(state, s);
+      }
+    } catch { localStorage.removeItem(KEY); }
   }
 
   function totals() {
@@ -91,6 +93,11 @@
     const { home, vis } = totals();
     const N = names();
 
+    // Screens — primero para que el cambio de pantalla ocurra aunque el resto falle
+    $("setup").style.display  = state.started                      ? "none" : "flex";
+    $("game").style.display   = (state.started && !state.finished) ? "flex" : "none";
+    $("winner").style.display = state.finished                     ? "flex" : "none";
+
     // Labels
     $("homeLabel").textContent  = N.home;
     $("visLabel").textContent   = N.vis;
@@ -123,11 +130,6 @@
     } else {
       leadBar.style.display = "none";
     }
-
-    // Screens
-    $("setup").style.display  = state.started                        ? "none" : "flex";
-    $("game").style.display   = (state.started && !state.finished)   ? "flex" : "none";
-    $("winner").style.display = state.finished                       ? "flex" : "none";
 
     // Winner screen
     if (state.finished) {
