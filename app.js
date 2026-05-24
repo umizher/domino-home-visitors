@@ -50,7 +50,7 @@
   function addHand(side, pts) {
     if (!state.started || state.finished) return;
     const p = toInt(pts);
-    if (!Number.isFinite(p) || p <= 0) { alert("Pon puntos válidos (> 0)."); return; }
+    if (!Number.isFinite(p) || p <= 0) return;
     state.hands.push({ id: uid(), side, pts: p });
     save();
     render();
@@ -89,40 +89,79 @@
     render();
   }
 
+  // ── Numpad ──
+  let npSide = null;
+  let npVal  = "";
+
+  function openNumpad(side) {
+    if (!state.started || state.finished) return;
+    npSide = side;
+    npVal  = "";
+    const N = names();
+    const isHome = side === "HOME";
+    $("npWho").textContent      = isHome ? N.home : N.vis;
+    $("npDisp").textContent     = "—";
+    $("npOk").style.background  = isHome ? "#F59E0B" : "#60A5FA";
+    $("npOk").style.color       = "#000";
+    $("npOverlay").classList.add("open");
+  }
+
+  function closeNumpad() {
+    $("npOverlay").classList.remove("open");
+    npSide = null;
+    npVal  = "";
+  }
+
+  function npInput(digit) {
+    if (npVal.length >= 4) return;
+    npVal += digit;
+    $("npDisp").textContent = npVal;
+  }
+
+  function npBackspace() {
+    npVal = npVal.slice(0, -1);
+    $("npDisp").textContent = npVal || "—";
+  }
+
+  function npConfirm() {
+    const p = toInt(npVal);
+    if (!Number.isFinite(p) || p <= 0) return;
+    addHand(npSide, p);
+    closeNumpad();
+  }
+
   function render() {
     const { home, vis } = totals();
     const N = names();
 
-    // Screens — primero para que el cambio de pantalla ocurra aunque el resto falle
+    // Screens first
     $("setup").style.display  = state.started                      ? "none" : "flex";
     $("game").style.display   = (state.started && !state.finished) ? "flex" : "none";
     $("winner").style.display = state.finished                     ? "flex" : "none";
 
     // Labels
-    $("homeLabel").textContent  = N.home;
-    $("visLabel").textContent   = N.vis;
-    $("homeTotal").textContent  = home;
-    $("visTotal").textContent   = vis;
-    $("homeBadge").textContent  = N.home;
-    $("visBadge").textContent   = N.vis;
-    $("thHome").textContent     = N.home;
-    $("thVis").textContent      = N.vis;
-    $("handCount").textContent  = `${state.hands.length} mano${state.hands.length !== 1 ? "s" : ""}`;
+    $("homeLabel").textContent = N.home;
+    $("visLabel").textContent  = N.vis;
+    $("homeTotal").textContent = home;
+    $("visTotal").textContent  = vis;
+    $("thHome").textContent    = N.home;
+    $("thVis").textContent     = N.vis;
+    $("handCount").textContent = `${state.hands.length} mano${state.hands.length !== 1 ? "s" : ""}`;
 
-    // Leading highlight
-    const teamHome = $("teamHome");
-    const teamVis  = $("teamVis");
-    teamHome.classList.remove("leading");
-    teamVis.classList.remove("leading");
+    // Leading
+    const tapHome = $("tapHome");
+    const tapVis  = $("tapVis");
+    tapHome.classList.remove("leading", "winning");
+    tapVis.classList.remove("leading", "winning");
 
     const leadBar = $("leadBar");
     if (state.started && !state.finished) {
       if (home > vis) {
         leadBar.textContent = `${N.home} arriba por ${home - vis} pts`;
-        teamHome.classList.add("leading");
+        tapHome.classList.add("leading");
       } else if (vis > home) {
         leadBar.textContent = `${N.vis} arriba por ${vis - home} pts`;
-        teamVis.classList.add("leading");
+        tapVis.classList.add("leading");
       } else {
         leadBar.textContent = home === 0 ? `Meta: ${state.config.target} puntos` : "Empate";
       }
@@ -131,16 +170,17 @@
       leadBar.style.display = "none";
     }
 
-    // Winner screen
+    // Winner
     if (state.finished) {
+      if (state.winner === "HOME") tapHome.classList.add("winning");
+      else if (state.winner === "VISITORS") tapVis.classList.add("winning");
       const winName = state.winner === "HOME" ? N.home
                     : state.winner === "VISITORS" ? N.vis : null;
       $("wTrophy").textContent = state.winner === "TIE" ? "🤝" : "🏆";
       $("wWho").textContent    = state.winner === "TIE" ? "Empate" : `¡Ganó ${winName}!`;
       $("wPts").textContent    = `${home} — ${vis}`;
-      $("wWho").style.color    = state.winner === "HOME"      ? "var(--home)"
-                               : state.winner === "VISITORS"  ? "var(--vis)"
-                               : "var(--muted)";
+      $("wWho").style.color    = state.winner === "HOME"     ? "var(--home)"
+                               : state.winner === "VISITORS" ? "var(--vis)" : "var(--muted)";
     }
 
     // History
@@ -186,24 +226,21 @@
     render();
   };
 
-  // Add points
-  $("addHome").onclick = () => {
-    const v = $("homePts").value;
-    $("homePts").value = "";
-    addHand("HOME", v);
-    $("homePts").focus();
-  };
+  // Tapping the score card opens the numpad
+  $("tapHome").onclick = () => openNumpad("HOME");
+  $("tapVis").onclick  = () => openNumpad("VISITORS");
 
-  $("addVis").onclick = () => {
-    const v = $("visPts").value;
-    $("visPts").value = "";
-    addHand("VISITORS", v);
-    $("visPts").focus();
-  };
+  // Numpad
+  $("npOverlay").addEventListener("click", e => {
+    if (e.target === $("npOverlay")) closeNumpad();
+  });
+  document.querySelectorAll(".nk[data-n]").forEach(btn => {
+    btn.addEventListener("click", () => npInput(btn.dataset.n));
+  });
+  $("npBack").onclick = npBackspace;
+  $("npOk").onclick   = npConfirm;
 
-  $("homePts").addEventListener("keydown", e => { if (e.key === "Enter") $("addHome").click(); });
-  $("visPts").addEventListener("keydown",  e => { if (e.key === "Enter") $("addVis").click();  });
-
+  // History
   $("hands").addEventListener("click", e => {
     const btn = e.target.closest("button[data-act]");
     if (!btn) return;

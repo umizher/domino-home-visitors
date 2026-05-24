@@ -18,7 +18,6 @@
     <div class="setup-inner">
       <div class="logo">Dominó</div>
       <p class="logo-sub">Marcador de partidas</p>
-
       <div class="fields">
         <div class="field">
           <label for="homeName">Equipo local</label>
@@ -33,52 +32,36 @@
           <input id="target" type="text" inputmode="numeric" pattern="[0-9]*" value="200"/>
         </div>
       </div>
-
       <button id="startGame" class="btn-cta">Iniciar partida</button>
     </div>
   </div>
 
   <!-- Game -->
   <div id="game" style="display:none">
-
     <header class="topbar">
       <span class="topbar-title">Dominó</span>
       <button id="reset" class="btn-ghost-sm">Nueva partida</button>
     </header>
 
     <div class="scores">
-      <div class="team" id="teamHome">
+      <button class="score-btn" id="tapHome">
         <div class="team-label" id="homeLabel">HOME</div>
         <div class="team-score" id="homeTotal">0</div>
-      </div>
+        <div class="tap-hint">toca para anotar</div>
+      </button>
       <div class="scores-sep"></div>
-      <div class="team" id="teamVis">
+      <button class="score-btn" id="tapVis">
         <div class="team-label" id="visLabel">VISITORS</div>
         <div class="team-score" id="visTotal">0</div>
-      </div>
+        <div class="tap-hint">toca para anotar</div>
+      </button>
     </div>
 
     <div class="lead-bar" id="leadBar"></div>
 
-    <div class="inputs">
-      <div class="inp-row">
-        <input id="homePts" class="inp inp-home" type="text" inputmode="numeric"
-               pattern="[0-9]*" placeholder="Puntos" autocomplete="off"/>
-        <button id="addHome" class="btn-add btn-add-home">
-          + <span id="homeBadge">HOME</span>
-        </button>
-      </div>
-      <div class="inp-row">
-        <input id="visPts" class="inp inp-vis" type="text" inputmode="numeric"
-               pattern="[0-9]*" placeholder="Puntos" autocomplete="off"/>
-        <button id="addVis" class="btn-add btn-add-vis">
-          + <span id="visBadge">VISITORS</span>
-        </button>
-      </div>
-      <div class="acts">
-        <button id="undo" class="btn-act">↩ Deshacer</button>
-        <button id="finishNow" class="btn-act">Finalizar</button>
-      </div>
+    <div class="acts">
+      <button id="undo" class="btn-act">↩ Deshacer</button>
+      <button id="finishNow" class="btn-act">Finalizar</button>
     </div>
 
     <div class="hist" id="hist" style="display:none">
@@ -102,7 +85,28 @@
         </table>
       </div>
     </div>
+  </div>
 
+  <!-- Numpad overlay -->
+  <div id="npOverlay">
+    <div id="npSheet">
+      <div class="np-who" id="npWho">HOME</div>
+      <div class="np-disp" id="npDisp">—</div>
+      <div class="np-grid">
+        <button class="nk" data-n="1">1</button>
+        <button class="nk" data-n="2">2</button>
+        <button class="nk" data-n="3">3</button>
+        <button class="nk" data-n="4">4</button>
+        <button class="nk" data-n="5">5</button>
+        <button class="nk" data-n="6">6</button>
+        <button class="nk" data-n="7">7</button>
+        <button class="nk" data-n="8">8</button>
+        <button class="nk" data-n="9">9</button>
+        <button class="nk nk-back" id="npBack">⌫</button>
+        <button class="nk" data-n="0">0</button>
+        <button class="nk nk-ok" id="npOk">✓</button>
+      </div>
+    </div>
   </div>
 
   <!-- Winner -->
