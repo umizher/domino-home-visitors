@@ -13,48 +13,35 @@
 </head>
 <body>
 
-  <!-- Setup -->
-  <div id="setup">
-    <div class="setup-inner">
-      <div class="logo">Dominó</div>
-      <p class="logo-sub">Marcador de partidas</p>
-      <div class="fields">
-        <div class="field">
-          <label for="homeName">Equipo local</label>
-          <input id="homeName" placeholder="HOME" autocomplete="off" spellcheck="false"/>
-        </div>
-        <div class="field">
-          <label for="visName">Equipo visitante</label>
-          <input id="visName" placeholder="VISITORS" autocomplete="off" spellcheck="false"/>
-        </div>
-        <div class="field">
-          <label for="target">Meta de puntos</label>
-          <input id="target" type="text" inputmode="numeric" pattern="[0-9]*" value="200"/>
-        </div>
-      </div>
-      <button id="startGame" class="btn-cta">Iniciar partida</button>
-    </div>
-  </div>
-
-  <!-- Game -->
-  <div id="game" style="display:none">
+  <!-- Game (pantalla única) -->
+  <div id="game">
     <header class="topbar">
       <span class="topbar-title">Dominó</span>
       <button id="reset" class="btn-ghost-sm">Nueva partida</button>
     </header>
 
     <div class="scores">
-      <button class="score-btn" id="tapHome">
-        <div class="team-label" id="homeLabel">HOME</div>
-        <div class="team-score" id="homeTotal">0</div>
-        <div class="tap-hint">toca para anotar</div>
-      </button>
+      <div class="score-card" id="cardHome">
+        <div class="team-label-wrap" id="tapHomeLabel">
+          <span id="homeLabel">HOME</span>
+          <span class="lbl-edit">✎</span>
+        </div>
+        <button class="score-tap" id="tapHome">
+          <div class="team-score" id="homeTotal">0</div>
+          <div class="tap-hint">toca para anotar</div>
+        </button>
+      </div>
       <div class="scores-sep"></div>
-      <button class="score-btn" id="tapVis">
-        <div class="team-label" id="visLabel">VISITORS</div>
-        <div class="team-score" id="visTotal">0</div>
-        <div class="tap-hint">toca para anotar</div>
-      </button>
+      <div class="score-card" id="cardVis">
+        <div class="team-label-wrap" id="tapVisLabel">
+          <span id="visLabel">VISITORS</span>
+          <span class="lbl-edit">✎</span>
+        </div>
+        <button class="score-tap" id="tapVis">
+          <div class="team-score" id="visTotal">0</div>
+          <div class="tap-hint">toca para anotar</div>
+        </button>
+      </div>
     </div>
 
     <div class="lead-bar" id="leadBar"></div>
