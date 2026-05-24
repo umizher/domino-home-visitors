@@ -13,7 +13,6 @@
 </head>
 <body>
 
-  <!-- Game (pantalla única) -->
   <div id="game">
     <header class="topbar">
       <span class="topbar-title">Dominó</span>
@@ -44,9 +43,9 @@
       </div>
     </div>
 
-    <div class="lead-bar" id="leadBar"></div>
+    <div class="info-bar" id="infoBar"></div>
 
-    <div class="acts">
+    <div class="acts" id="acts">
       <button id="undo" class="btn-act">↩ Deshacer</button>
       <button id="finishNow" class="btn-act">Finalizar</button>
     </div>
@@ -93,16 +92,6 @@
         <button class="nk" data-n="0">0</button>
         <button class="nk nk-ok" id="npOk">✓</button>
       </div>
-    </div>
-  </div>
-
-  <!-- Winner -->
-  <div id="winner" style="display:none">
-    <div class="winner-inner">
-      <div class="w-trophy" id="wTrophy">🏆</div>
-      <div class="w-who" id="wWho"></div>
-      <div class="w-pts" id="wPts"></div>
-      <button id="newGame" class="btn-cta">Nueva partida</button>
     </div>
   </div>
 

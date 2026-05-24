@@ -58,6 +58,11 @@
   function undo() {
     if (!state.hands.length) return;
     state.hands.pop();
+    // if game was finished, reopen it
+    if (state.finished) {
+      state.finished = false;
+      state.winner = null;
+    }
     save();
     render();
   }
@@ -130,9 +135,8 @@
     const { home, vis } = totals();
     const N = names();
 
-    // Screens
-    $("game").style.display   = !state.finished ? "flex" : "none";
-    $("winner").style.display = state.finished  ? "flex" : "none";
+    // Finished state on the game div
+    $("game").classList.toggle("finished", state.finished);
 
     // Labels
     $("homeLabel").textContent = N.home;
@@ -143,40 +147,39 @@
     $("thVis").textContent     = N.vis;
     $("handCount").textContent = `${state.hands.length} mano${state.hands.length !== 1 ? "s" : ""}`;
 
-    // Leading
+    // Card states
     const cardHome = $("cardHome");
     const cardVis  = $("cardVis");
     cardHome.classList.remove("leading", "winning");
     cardVis.classList.remove("leading", "winning");
 
-    const leadBar = $("leadBar");
-    if (!state.finished) {
-      if (home > vis) {
-        leadBar.textContent = `${N.home} arriba por ${home - vis} pts`;
-        cardHome.classList.add("leading");
-      } else if (vis > home) {
-        leadBar.textContent = `${N.vis} arriba por ${vis - home} pts`;
-        cardVis.classList.add("leading");
-      } else {
-        leadBar.textContent = home === 0 ? `Meta: ${state.config.target} puntos` : "Empate";
-      }
-      leadBar.style.display = "block";
-    } else {
-      leadBar.style.display = "none";
-    }
-
-    // Winner screen
     if (state.finished) {
       if (state.winner === "HOME") cardHome.classList.add("winning");
       else if (state.winner === "VISITORS") cardVis.classList.add("winning");
+    } else {
+      if (home > vis) cardHome.classList.add("leading");
+      else if (vis > home) cardVis.classList.add("leading");
+    }
+
+    // Info bar
+    const bar = $("infoBar");
+    if (state.finished) {
       const winName = state.winner === "HOME" ? N.home
                     : state.winner === "VISITORS" ? N.vis : null;
-      $("wTrophy").textContent = state.winner === "TIE" ? "🤝" : "🏆";
-      $("wWho").textContent    = state.winner === "TIE" ? "Empate" : `¡Ganó ${winName}!`;
-      $("wPts").textContent    = `${home} — ${vis}`;
-      $("wWho").style.color    = state.winner === "HOME"     ? "var(--home)"
-                               : state.winner === "VISITORS" ? "var(--vis)" : "var(--muted)";
+      bar.textContent  = state.winner === "TIE"
+        ? `🤝 Empate — ${home} pts`
+        : `🏆 ¡Ganó ${winName}! · ${home} – ${vis}`;
+      bar.className = "info-bar winner";
+    } else {
+      if (home > vis)      bar.textContent = `${N.home} arriba por ${home - vis} pts`;
+      else if (vis > home) bar.textContent = `${N.vis} arriba por ${vis - home} pts`;
+      else                 bar.textContent = home === 0 ? `Meta: ${state.config.target} puntos` : "Empate";
+      bar.className = "info-bar";
     }
+
+    // Acts: hide Finalizar when finished
+    $("finishNow").style.display = state.finished ? "none" : "";
+    $("undo").disabled = state.hands.length === 0;
 
     // History
     $("hist").style.display = state.hands.length > 0 ? "block" : "none";
@@ -203,15 +206,13 @@
         </tr>
       `);
     });
-
-    $("undo").disabled = state.hands.length === 0;
   }
 
-  // Tapping score area → numpad
+  // Score taps → numpad
   $("tapHome").onclick = () => openNumpad("HOME");
   $("tapVis").onclick  = () => openNumpad("VISITORS");
 
-  // Tapping team label → rename
+  // Team label → rename
   $("tapHomeLabel").onclick = () => {
     const val = prompt("Nombre del equipo local:", state.config.homeName || "HOME");
     if (val === null) return;
@@ -246,7 +247,7 @@
   $("undo").onclick      = undo;
   $("finishNow").onclick = () => { if (!state.finished) finish(); };
 
-  // Nueva partida — doble toque para confirmar
+  // Nueva partida — doble toque en el MISMO botón
   let resetPending = false;
   let resetTimer   = null;
 
@@ -254,7 +255,7 @@
     if (!resetPending) {
       resetPending = true;
       $("reset").classList.add("confirming");
-      $("reset").textContent = "¿Seguro?";
+      $("reset").textContent = "Toca de nuevo";
       resetTimer = setTimeout(() => {
         resetPending = false;
         $("reset").classList.remove("confirming");
@@ -262,24 +263,15 @@
       }, 3000);
     } else {
       clearTimeout(resetTimer);
+      resetPending = false;
+      $("reset").classList.remove("confirming");
+      $("reset").textContent = "Nueva partida";
       state.hands    = [];
       state.finished = false;
       state.winner   = null;
       save();
       render();
-      resetPending = false;
-      $("reset").classList.remove("confirming");
-      $("reset").textContent = "Nueva partida";
     }
-  };
-
-  // Winner → nueva partida (reset directo, sin doble toque)
-  $("newGame").onclick = () => {
-    state.hands    = [];
-    state.finished = false;
-    state.winner   = null;
-    save();
-    render();
   };
 
   load();

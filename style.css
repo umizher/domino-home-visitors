@@ -23,7 +23,7 @@ html, body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* ── GAME ── */
+/* ── GAME (única pantalla) ── */
 #game { display: flex; flex-direction: column; min-height: 100vh; }
 
 .topbar {
@@ -32,6 +32,7 @@ html, body {
 }
 .topbar-title { font-size: 16px; font-weight: 900; letter-spacing: -.4px; }
 
+/* Nueva partida — normal y confirmando */
 .btn-ghost-sm {
   background: none; border: 1px solid var(--border); border-radius: 20px;
   padding: 6px 14px; font-size: 13px; font-weight: 600; color: var(--muted);
@@ -39,23 +40,28 @@ html, body {
   -webkit-tap-highlight-color: transparent;
 }
 .btn-ghost-sm.confirming {
-  background: var(--red); border-color: var(--red); color: #fff;
+  background: var(--red); border-color: var(--red); color: #fff; font-weight: 700;
 }
 
 /* Score cards */
 .scores {
   display: flex; align-items: stretch;
-  padding: 20px 16px 8px; gap: 0;
+  padding: 20px 16px 8px;
 }
 .score-card {
   flex: 1; display: flex; flex-direction: column; align-items: center;
   border: 2px solid var(--border); border-radius: 20px; overflow: hidden;
-  transition: border-color .2s, box-shadow .2s;
+  transition: border-color .25s, box-shadow .25s;
 }
 #cardHome.leading { border-color: var(--home); }
 #cardVis.leading  { border-color: var(--vis);  }
-#cardHome.winning { border-color: var(--green); box-shadow: 0 0 28px rgba(34,197,94,.25); }
-#cardVis.winning  { border-color: var(--green); box-shadow: 0 0 28px rgba(34,197,94,.25); }
+#cardHome.winning { border-color: var(--green); box-shadow: 0 0 32px rgba(34,197,94,.3); }
+#cardVis.winning  { border-color: var(--green); box-shadow: 0 0 32px rgba(34,197,94,.3); }
+
+.scores-sep {
+  width: 1px; background: var(--border);
+  margin: 20px 8px; align-self: stretch; flex-shrink: 0;
+}
 
 /* Team label — tappable to rename */
 .team-label-wrap {
@@ -81,27 +87,28 @@ html, body {
 }
 .score-tap:active { background: rgba(255,255,255,.05); }
 
+/* When game is finished, disable score tapping */
+#game.finished .score-tap { pointer-events: none; cursor: default; }
+#game.finished .tap-hint  { display: none; }
+
 .team-score {
   font-size: clamp(64px, 16vw, 100px);
   font-weight: 900; line-height: 1;
   letter-spacing: -4px; font-variant-numeric: tabular-nums;
-  transition: color .2s;
 }
 #cardHome .team-score { color: var(--home); }
 #cardVis  .team-score { color: var(--vis);  }
 
 .tap-hint { font-size: 11px; font-weight: 600; color: var(--dim); letter-spacing: .3px; }
 
-.scores-sep {
-  width: 1px; background: var(--border);
-  margin: 20px 8px; align-self: stretch; flex-shrink: 0;
+/* Info bar */
+.info-bar {
+  text-align: center; font-size: 12px; font-weight: 600; color: var(--dim);
+  padding: 8px 20px 14px; letter-spacing: .3px; min-height: 36px;
 }
-
-/* Lead bar */
-.lead-bar {
-  display: none; text-align: center;
-  font-size: 12px; font-weight: 600; color: var(--dim);
-  padding: 6px 20px 12px; letter-spacing: .3px;
+.info-bar.winner {
+  font-size: 16px; font-weight: 800; color: var(--green);
+  padding: 12px 20px 16px; letter-spacing: -.2px;
 }
 
 /* Actions */
@@ -145,7 +152,7 @@ tr:last-child td { border-bottom: none; }
 .btn-row-edit { color: var(--dim); }
 .btn-row-edit:active { background: rgba(245,158,11,.18); color: var(--home); }
 .btn-row-del  { color: var(--dim); }
-.btn-row-del:active  { background: rgba(239,68,68,.18); color: var(--red); }
+.btn-row-del:active { background: rgba(239,68,68,.18); color: var(--red); }
 
 .dot {
   display: inline-block; width: 7px; height: 7px; border-radius: 50%;
@@ -188,28 +195,3 @@ tr:last-child td { border-bottom: none; }
 .nk:active { opacity: .55; }
 .nk-back { font-size: 20px; }
 .nk-ok   { font-size: 22px; font-weight: 900; }
-
-/* ── WINNER ── */
-#winner {
-  display: none; position: fixed; inset: 0;
-  background: var(--bg);
-  flex-direction: column; align-items: center; justify-content: center;
-}
-.winner-inner {
-  display: flex; flex-direction: column;
-  align-items: center; text-align: center;
-  padding: 32px 24px; gap: 10px;
-}
-.w-trophy { font-size: 72px; margin-bottom: 8px; }
-.w-who    { font-size: 34px; font-weight: 900; letter-spacing: -1px; }
-.w-pts    { font-size: 18px; color: var(--muted); margin-bottom: 20px; }
-
-.btn-cta {
-  padding: 16px 40px;
-  background: var(--home); color: #000;
-  border: none; border-radius: 14px;
-  font-size: 16px; font-weight: 800;
-  cursor: pointer; transition: opacity .15s;
-  -webkit-tap-highlight-color: transparent;
-}
-.btn-cta:active { opacity: .8; }

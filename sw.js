@@ -1,4 +1,4 @@
-const CACHE = "domino-v7";
+const CACHE = "domino-v8";
 const FILES = ["./", "./index.html", "./app.js", "./style.css", "./manifest.json", "./icon.svg"];
 
 self.addEventListener("install", e => {
