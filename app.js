@@ -22,7 +22,8 @@
   function totals() {
     let home = 0, vis = 0;
     for (const h of state.hands) {
-      if (h.side === "HOME") home += h.pts; else vis += h.pts;
+      if (h.side === "HOME") home += h.pts;
+      else if (h.side === "VISITORS") vis += h.pts;
     }
     return { home, vis };
   }
@@ -55,10 +56,25 @@
     if (home >= state.config.target || vis >= state.config.target) finish();
   }
 
+  function addTiedHand() {
+    if (state.finished) return;
+    state.hands.push({ id: uid(), side: "TIE", pts: 0 });
+    save();
+    render();
+  }
+
+  function changeTarget() {
+    const val = prompt(`Meta de puntos (actual: ${state.config.target}):`, String(state.config.target));
+    if (val === null) return;
+    const t = toInt(val);
+    if (!Number.isFinite(t) || t < 1) { alert("Meta inválida (debe ser mayor a 0)."); return; }
+    state.config.target = t;
+    save(); render();
+  }
+
   function undo() {
     if (!state.hands.length) return;
     state.hands.pop();
-    // if game was finished, reopen it
     if (state.finished) {
       state.finished = false;
       state.winner = null;
@@ -87,6 +103,13 @@
     if (idx < 0) return;
     if (!confirm("¿Eliminar este puntaje?")) return;
     state.hands.splice(idx, 1);
+    if (state.finished) {
+      const { home, vis } = totals();
+      if (home < state.config.target && vis < state.config.target) {
+        state.finished = false;
+        state.winner = null;
+      }
+    }
     save();
     render();
   }
@@ -102,6 +125,7 @@
     const N = names();
     $("npWho").textContent     = side === "HOME" ? N.home : N.vis;
     $("npDisp").textContent    = "—";
+    $("npDisp").classList.remove("shake");
     $("npOk").style.background = side === "HOME" ? "#F59E0B" : "#60A5FA";
     $("npOk").style.color      = "#000";
     $("npOverlay").classList.add("open");
@@ -116,6 +140,7 @@
   function npInput(digit) {
     if (npVal.length >= 4) return;
     npVal += digit;
+    $("npDisp").classList.remove("shake");
     $("npDisp").textContent = npVal;
   }
 
@@ -126,7 +151,14 @@
 
   function npConfirm() {
     const p = toInt(npVal);
-    if (!Number.isFinite(p) || p <= 0) return;
+    if (!Number.isFinite(p) || p <= 0) {
+      const d = $("npDisp");
+      d.classList.remove("shake");
+      void d.offsetWidth;
+      d.classList.add("shake");
+      setTimeout(() => d.classList.remove("shake"), 400);
+      return;
+    }
     addHand(npSide, p);
     closeNumpad();
   }
@@ -135,10 +167,8 @@
     const { home, vis } = totals();
     const N = names();
 
-    // Finished state on the game div
     $("game").classList.toggle("finished", state.finished);
 
-    // Labels
     $("homeLabel").textContent = N.home;
     $("visLabel").textContent  = N.vis;
     $("homeTotal").textContent = home;
@@ -147,7 +177,6 @@
     $("thVis").textContent     = N.vis;
     $("handCount").textContent = `${state.hands.length} mano${state.hands.length !== 1 ? "s" : ""}`;
 
-    // Card states
     const cardHome = $("cardHome");
     const cardVis  = $("cardVis");
     cardHome.classList.remove("leading", "winning");
@@ -163,45 +192,57 @@
 
     // Info bar
     const bar = $("infoBar");
+    bar.onclick = null;
+    bar.style.cursor = "";
     if (state.finished) {
       const winName = state.winner === "HOME" ? N.home
                     : state.winner === "VISITORS" ? N.vis : null;
-      bar.textContent  = state.winner === "TIE"
+      bar.textContent = state.winner === "TIE"
         ? `🤝 Empate — ${home} pts`
         : `🏆 ¡Ganó ${winName}! · ${home} – ${vis}`;
       bar.className = "info-bar winner";
     } else {
+      bar.className = "info-bar";
       if (home > vis)      bar.textContent = `${N.home} arriba por ${home - vis} pts`;
       else if (vis > home) bar.textContent = `${N.vis} arriba por ${vis - home} pts`;
-      else                 bar.textContent = home === 0 ? `Meta: ${state.config.target} puntos` : "Empate";
-      bar.className = "info-bar";
+      else if (home === 0) {
+        bar.innerHTML = `Meta: ${state.config.target} pts &nbsp;<span class="lbl-edit">✎</span>`;
+        bar.onclick = changeTarget;
+        bar.style.cursor = "pointer";
+      } else {
+        bar.textContent = "Empate";
+      }
     }
 
-    // Acts: hide Finalizar when finished
     $("finishNow").style.display = state.finished ? "none" : "";
+    $("addTie").style.display    = state.finished ? "none" : "";
     $("undo").disabled = state.hands.length === 0;
 
-    // History
     $("hist").style.display = state.hands.length > 0 ? "block" : "none";
     let runH = 0, runV = 0;
     const rows = state.hands.map((h, i) => {
-      if (h.side === "HOME") runH += h.pts; else runV += h.pts;
+      if (h.side === "HOME") runH += h.pts;
+      else if (h.side === "VISITORS") runV += h.pts;
       return { id: h.id, n: i + 1, side: h.side, pts: h.pts, rH: runH, rV: runV };
     });
     const tbody = $("hands");
     tbody.innerHTML = "";
     rows.slice().reverse().forEach(r => {
+      const isTie  = r.side === "TIE";
       const isHome = r.side === "HOME";
       tbody.insertAdjacentHTML("beforeend", `
         <tr>
           <td>${r.n}</td>
-          <td><span class="dot ${isHome ? "home" : "vis"}"></span>${isHome ? N.home : N.vis}</td>
-          <td><b>${r.pts}</b></td>
+          <td>${isTie
+            ? '🤝 Empate de mano'
+            : `<span class="dot ${isHome ? "home" : "vis"}"></span>${isHome ? N.home : N.vis}`
+          }</td>
+          <td>${isTie ? '<span style="color:var(--dim)">—</span>' : `<b>${r.pts}</b>`}</td>
           <td>${r.rH}</td>
           <td>${r.rV}</td>
           <td class="td-acts">
-            <button class="btn-row btn-row-edit" data-act="edit" data-id="${r.id}">✏</button>
-            <button class="btn-row btn-row-del"  data-act="del"  data-id="${r.id}">✕</button>
+            ${isTie ? '' : `<button class="btn-row btn-row-edit" data-act="edit" data-id="${r.id}">✏</button>`}
+            <button class="btn-row btn-row-del" data-act="del" data-id="${r.id}">✕</button>
           </td>
         </tr>
       `);
@@ -216,13 +257,17 @@
   $("tapHomeLabel").onclick = () => {
     const val = prompt("Nombre del equipo local:", state.config.homeName || "HOME");
     if (val === null) return;
-    state.config.homeName = val.trim();
+    const trimmed = val.trim();
+    if (!trimmed) return;
+    state.config.homeName = trimmed;
     save(); render();
   };
   $("tapVisLabel").onclick = () => {
     const val = prompt("Nombre del equipo visitante:", state.config.visName || "VISITORS");
     if (val === null) return;
-    state.config.visName = val.trim();
+    const trimmed = val.trim();
+    if (!trimmed) return;
+    state.config.visName = trimmed;
     save(); render();
   };
 
@@ -233,8 +278,9 @@
   document.querySelectorAll(".nk[data-n]").forEach(btn => {
     btn.addEventListener("click", () => npInput(btn.dataset.n));
   });
-  $("npBack").onclick = npBackspace;
-  $("npOk").onclick   = npConfirm;
+  $("npBack").onclick   = npBackspace;
+  $("npOk").onclick     = npConfirm;
+  $("npCancel").onclick = closeNumpad;
 
   // History actions
   $("hands").addEventListener("click", e => {
@@ -245,6 +291,7 @@
   });
 
   $("undo").onclick      = undo;
+  $("addTie").onclick    = addTiedHand;
   $("finishNow").onclick = () => { if (!state.finished) finish(); };
 
   // Nueva partida — doble toque en el MISMO botón

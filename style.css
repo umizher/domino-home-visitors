@@ -105,6 +105,7 @@ html, body {
 .info-bar {
   text-align: center; font-size: 12px; font-weight: 600; color: var(--dim);
   padding: 8px 20px 14px; letter-spacing: .3px; min-height: 36px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .info-bar.winner {
   font-size: 16px; font-weight: 800; color: var(--green);
@@ -139,7 +140,7 @@ html, body {
 table { width: 100%; border-collapse: collapse; font-size: 13px; }
 th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid var(--border); }
 th { background: var(--surface); font-size: 11px; font-weight: 700;
-     text-transform: uppercase; letter-spacing: .5px; color: var(--dim); }
+     text-transform: uppercase; letter-spacing: .5px; color: var(--muted); }
 tr:last-child td { border-bottom: none; }
 
 .td-acts { white-space: nowrap; text-align: right; }
@@ -195,3 +196,20 @@ tr:last-child td { border-bottom: none; }
 .nk:active { opacity: .55; }
 .nk-back { font-size: 20px; }
 .nk-ok   { font-size: 22px; font-weight: 900; }
+.nk-cancel {
+  width: 100%; height: 50px; margin-top: 10px;
+  background: none; border: 1px solid var(--border); border-radius: 14px;
+  color: var(--muted); font-size: 15px; font-weight: 600;
+  cursor: pointer; -webkit-tap-highlight-color: transparent;
+  transition: background .15s, color .15s;
+}
+.nk-cancel:active { background: var(--border); color: var(--text); }
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20%       { transform: translateX(-8px); }
+  40%       { transform: translateX(8px); }
+  60%       { transform: translateX(-5px); }
+  80%       { transform: translateX(5px); }
+}
+.np-disp.shake { animation: shake .35s ease; color: var(--red); }
