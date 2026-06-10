@@ -16,6 +16,7 @@
   <div id="game">
     <header class="topbar">
       <span class="topbar-title">Dominó</span>
+      <button id="openTournBtn" class="btn-ghost-sm">Torneo</button>
       <button id="reset" class="btn-ghost-sm">Nueva partida</button>
     </header>
 
@@ -74,6 +75,117 @@
     </div>
   </div>
 
+  <!-- ── TORNEO ── -->
+  <div id="tourn" hidden>
+    <header class="topbar t-topbar">
+      <button id="tBackBtn" class="btn-ghost-sm">← Volver</button>
+      <span class="topbar-title">Torneo</span>
+      <button id="tStandingsBtn" class="btn-ghost-sm" style="visibility:hidden">Tabla</button>
+    </header>
+
+    <!-- Pantalla 1: Selector -->
+    <section id="tScreenSelector" class="t-screen">
+      <div class="t-selector">
+        <h2 class="t-section-title">Tipo de torneo</h2>
+        <button id="tSelIndividual" class="t-mode-btn">
+          <span class="t-mode-name">Individual</span>
+          <span class="t-mode-sub">Un jugador por ficha · 20+ participantes</span>
+        </button>
+        <button id="tSelPairs" class="t-mode-btn">
+          <span class="t-mode-name">En Parejas</span>
+          <span class="t-mode-sub">Dos jugadores por ficha · 10+ parejas</span>
+        </button>
+        <button id="tContinueBtn" class="btn-primary t-continue-btn" hidden>Continuar torneo</button>
+      </div>
+    </section>
+
+    <!-- Pantalla 2: Configuración -->
+    <section id="tScreenSetup" class="t-screen">
+      <div class="t-setup">
+        <h2 class="t-section-title" id="tSetupTitle">Torneo Individual</h2>
+        <div id="tParticipantList" class="t-part-list"></div>
+        <button id="tAddParticipant" class="btn-act t-add-btn">+ Agregar participante</button>
+        <p id="tSetupHint" class="t-hint">Mínimo 4 participantes (0/4)</p>
+        <div class="t-rounds-row">
+          <label class="t-rounds-label">
+            Rondas
+            <input id="tNumRounds" type="number" class="t-rounds-input" min="1" max="12" value="4"/>
+          </label>
+        </div>
+        <button id="tStartBtn" class="btn-primary" disabled>Comenzar torneo</button>
+      </div>
+    </section>
+
+    <!-- Pantalla 3: Ronda activa -->
+    <section id="tScreenRound" class="t-screen">
+      <div class="t-round-header">
+        <span id="tRoundLabel">Ronda 1 / 4</span>
+        <span id="tRoundProgress">0 / 0 resultados</span>
+      </div>
+      <div class="table-wrap">
+        <table id="tMatchTable">
+          <thead>
+            <tr>
+              <th>Mesa</th>
+              <th>Jugador 1</th>
+              <th></th>
+              <th>Jugador 2</th>
+              <th>Resultado</th>
+            </tr>
+          </thead>
+          <tbody id="tMatchRows"></tbody>
+        </table>
+      </div>
+      <button id="tNextRoundBtn" class="btn-primary t-next-btn" disabled>Siguiente ronda →</button>
+    </section>
+
+    <!-- Pantalla 4: Clasificación (también usada como pantalla final) -->
+    <section id="tScreenStandings" class="t-screen">
+      <div id="tWinnerCard" class="t-winner-card" hidden>
+        <div class="t-winner-crown">🏆</div>
+        <div id="tWinnerName" class="t-winner-name"></div>
+        <div id="tWinnerStats" class="t-winner-stats"></div>
+      </div>
+      <div class="t-standings-header">
+        <span id="tStandingsRound">Clasificación</span>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Nombre</th>
+              <th>PJ</th>
+              <th>V</th>
+              <th>E</th>
+              <th>D</th>
+              <th>Pts</th>
+              <th>Buch</th>
+            </tr>
+          </thead>
+          <tbody id="tStandingsRows"></tbody>
+        </table>
+      </div>
+      <div class="t-standings-actions">
+        <button id="tStandingsBackBtn" class="btn-ghost-sm t-back-round-btn">← Ronda actual</button>
+        <button id="tNewTournBtn" class="btn-primary t-new-tourn-btn" hidden>Nuevo torneo</button>
+      </div>
+    </section>
+  </div>
+
+  <!-- Overlay: ingreso de resultado -->
+  <div id="tResultOverlay">
+    <div id="tResultSheet">
+      <div id="tResultTitle" class="t-result-title">Mesa 1</div>
+      <div class="t-result-btns">
+        <button id="tResP1" class="t-res-btn t-res-p1">Jugador 1</button>
+        <button id="tResDraw" class="t-res-btn t-res-draw">½<br>Empate</button>
+        <button id="tResP2" class="t-res-btn t-res-p2">Jugador 2</button>
+      </div>
+      <button id="tResCancel" class="nk-cancel">Cancelar</button>
+    </div>
+  </div>
+
   <!-- Numpad overlay -->
   <div id="npOverlay">
     <div id="npSheet">
@@ -98,6 +210,7 @@
   </div>
 
   <script src="app.js"></script>
+  <script src="tournament.js"></script>
   <script>
     if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js");
   </script>

@@ -1,5 +1,5 @@
-const CACHE = "domino-v9";
-const FILES = ["./", "./index.html", "./app.js", "./style.css", "./manifest.json", "./icon.svg"];
+const CACHE = "domino-v10";
+const FILES = ["./", "./index.html", "./app.js", "./tournament.js", "./style.css", "./manifest.json", "./icon.svg"];
 
 self.addEventListener("install", e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES)));
