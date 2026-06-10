@@ -1,7 +1,7 @@
 (() => {
   'use strict';
 
-  const TKEY = 'domino_tourn_v1';
+  const TKEY = 'domino_tourn_v2';
   const $ = id => document.getElementById(id);
   const uid = () => Math.random().toString(16).slice(2) + Date.now().toString(16);
 
@@ -35,10 +35,20 @@
   }
 
   function fp(id) { return ts.participants.find(p => p.id === id); }
+  const sideNames = ids => ids.map(id => { const p = fp(id); return p ? p.name : '?'; }).join(' + ');
 
   function newParticipant() {
-    return { id: uid(), name: '', pts: 0, buchholz: 0, wins: 0, draws: 0, losses: 0, opponents: [], byeCount: 0 };
+    return {
+      id: uid(), name: '', pts: 0, buchholz: 0,
+      wins: 0, draws: 0, losses: 0,
+      opponents: [], partners: [], byeCount: 0
+    };
   }
+
+  // Encounter checks (constraints of the Swiss pairing)
+  const metAsOpp     = (a, b) => a.opponents.includes(b.id);
+  const metAsPartner = (a, b) => a.partners.includes(b.id);
+  const metAnyhow    = (a, b) => metAsOpp(a, b) || metAsPartner(a, b);
 
   // ── Algorithm: Buchholz ───────────────────────────────────────────────
   function computeBuchholz() {
@@ -56,43 +66,26 @@
     );
   }
 
-  // ── Algorithm: Swiss Pairing (backtracking) ───────────────────────────
-  function generatePairings() {
-    computeBuchholz();
-    const sorted = sortedStandings();
-    const rem = [...sorted];
-
-    // Bye for odd count: lowest ranked with minimum byeCount
-    let byeP = null;
-    if (rem.length % 2 === 1) {
-      const minBye = Math.min(...rem.map(p => p.byeCount));
-      for (let i = rem.length - 1; i >= 0; i--) {
-        if (rem[i].byeCount === minBye) { byeP = rem[i]; rem.splice(i, 1); break; }
-      }
-    }
-
+  // ── Algorithm: pairs mode — 1 pair-unit vs 1 pair-unit (backtracking) ──
+  function pairUnits(rem) {
     const pairs = [];
     const used = new Set();
 
-    // Backtrack from highest-ranked downward
     function bt(idx) {
       while (idx < rem.length && used.has(rem[idx].id)) idx++;
       if (idx >= rem.length) return true;
-
       const p1 = rem[idx];
       used.add(p1.id);
-
       // Pass 1: avoid repeated opponents
       for (let j = idx + 1; j < rem.length; j++) {
         const p2 = rem[j];
-        if (used.has(p2.id) || p1.opponents.includes(p2.id)) continue;
+        if (used.has(p2.id) || metAsOpp(p1, p2)) continue;
         used.add(p2.id);
         pairs.push({ a: p1.id, b: p2.id, rep: false });
         if (bt(idx + 1)) return true;
         used.delete(p2.id); pairs.pop();
       }
-
-      // Pass 2: allow repeated pairings (last resort)
+      // Pass 2: allow repeats (last resort)
       for (let j = idx + 1; j < rem.length; j++) {
         const p2 = rem[j];
         if (used.has(p2.id)) continue;
@@ -101,51 +94,153 @@
         if (bt(idx + 1)) return true;
         used.delete(p2.id); pairs.pop();
       }
-
       used.delete(p1.id);
       return false;
     }
     bt(0);
 
-    const matches = pairs.map((pr, i) => ({
-      table: i + 1, p1: pr.a, p2: pr.b, result: null, repeated: pr.rep
+    return pairs.map((pr, i) => ({
+      table: i + 1, s1: [pr.a], s2: [pr.b], result: null, repeated: pr.rep
     }));
+  }
 
-    // Apply bye immediately (automatic win, tracked separately from regular wins)
-    if (byeP) {
-      byeP.byeCount++;
-      byeP.pts += 1;
-      byeP.opponents.push('BYE');
-      matches.push({ table: matches.length + 1, p1: byeP.id, p2: 'BYE', result: 'p1', repeated: false });
+  // ── Algorithm: individual mode — tables of 4, two teams of 2 ──────────
+  // Constraint: nobody at the table has previously been partner OR opponent
+  // of anyone else seated there (pass 1); relaxed with flag if impossible.
+  function tablesOf4(rem) {
+    const tables = [];
+    const used = new Set();
+
+    const cleanTable = t => {
+      for (let i = 0; i < 4; i++)
+        for (let j = i + 1; j < 4; j++)
+          if (metAnyhow(t[i], t[j])) return false;
+      return true;
+    };
+
+    function bt(idx) {
+      while (idx < rem.length && used.has(rem[idx].id)) idx++;
+      if (idx >= rem.length) return true;
+      const a = rem[idx];
+      used.add(a.id);
+      const avail = [];
+      for (let j = idx + 1; j < rem.length; j++) {
+        if (!used.has(rem[j].id)) avail.push(rem[j]);
+      }
+
+      const tryTriples = allowRep => {
+        for (let i = 0; i < avail.length; i++)
+          for (let j = i + 1; j < avail.length; j++)
+            for (let l = j + 1; l < avail.length; l++) {
+              const t = [a, avail[i], avail[j], avail[l]];
+              if (!allowRep && !cleanTable(t)) continue;
+              t.slice(1).forEach(p => used.add(p.id));
+              tables.push({ members: t, rep: allowRep && !cleanTable(t) });
+              if (bt(idx + 1)) return true;
+              tables.pop();
+              t.slice(1).forEach(p => used.delete(p.id));
+            }
+        return false;
+      };
+
+      if (tryTriples(false)) return true;
+      if (tryTriples(true)) return true;
+      used.delete(a.id);
+      return false;
+    }
+    bt(0);
+
+    // Split each table into 2 teams of 2, minimizing repeated relationships.
+    // Default seeding: 1&4 vs 2&3 (members come sorted by standing).
+    return tables.map((tb, i) => {
+      const [a, b, c, d] = tb.members;
+      const splits = [
+        [[a, d], [b, c]],
+        [[a, c], [b, d]],
+        [[a, b], [c, d]]
+      ];
+      let best = splits[0], bestScore = Infinity;
+      for (const [s1, s2] of splits) {
+        let sc = 0;
+        if (metAsPartner(s1[0], s1[1])) sc += 10;
+        if (metAsPartner(s2[0], s2[1])) sc += 10;
+        for (const x of s1) for (const y of s2) {
+          if (metAsOpp(x, y)) sc += 2;
+          if (metAsPartner(x, y)) sc += 1;
+        }
+        if (sc < bestScore) { bestScore = sc; best = [s1, s2]; }
+      }
+      return {
+        table: i + 1,
+        s1: best[0].map(p => p.id),
+        s2: best[1].map(p => p.id),
+        result: null,
+        repeated: tb.rep || bestScore > 0
+      };
+    });
+  }
+
+  // ── Algorithm: round generation ────────────────────────────────────────
+  function generatePairings() {
+    computeBuchholz();
+    const sorted = sortedStandings();
+    const groupSize = ts.type === 'individual' ? 4 : 2;
+    const k = sorted.length % groupSize;
+
+    // Byes: the k lowest-ranked with fewest accumulated byes rest this round
+    const byes = [];
+    if (k > 0) {
+      const cand = sorted
+        .map((p, rank) => ({ p, rank }))
+        .sort((x, y) => x.p.byeCount - y.p.byeCount || y.rank - x.rank);
+      byes.push(...cand.slice(0, k).map(c => c.p));
+      for (const p of byes) {
+        p.byeCount++;
+        p.pts += 1;
+        p.opponents.push('BYE');
+      }
     }
 
-    return { number: ts.rounds.length + 1, matches, bye: byeP ? byeP.id : null };
+    const rem = sorted.filter(p => !byes.includes(p));
+    const matches = ts.type === 'individual' ? tablesOf4(rem) : pairUnits(rem);
+
+    return { number: ts.rounds.length + 1, matches, byes: byes.map(p => p.id) };
   }
 
   // ── Result management ──────────────────────────────────────────────────
   function undoResult(ri, mi) {
     const m = ts.rounds[ri].matches[mi];
-    if (!m || m.result === null || m.p2 === 'BYE') return;
-    const a = fp(m.p1), b = fp(m.p2);
-    if (m.result === 'p1')   { a.pts -= 1; a.wins--;  b.losses--; }
-    else if (m.result === 'draw') { a.pts -= 0.5; b.pts -= 0.5; a.draws--; b.draws--; }
-    else                     { b.pts -= 1; b.wins--;  a.losses--; }
-    const ia = a.opponents.lastIndexOf(m.p2); if (ia >= 0) a.opponents.splice(ia, 1);
-    const ib = b.opponents.lastIndexOf(m.p1); if (ib >= 0) b.opponents.splice(ib, 1);
+    if (!m || m.result === null) return;
+    const S1 = m.s1.map(fp), S2 = m.s2.map(fp);
+    if (m.result === 's1')      { S1.forEach(p => { p.pts -= 1; p.wins--; }); S2.forEach(p => { p.losses--; }); }
+    else if (m.result === 's2') { S2.forEach(p => { p.pts -= 1; p.wins--; }); S1.forEach(p => { p.losses--; }); }
+    else { [...S1, ...S2].forEach(p => { p.pts -= 0.5; p.draws--; }); }
+    const unlink = (team, foes) => team.forEach(p => {
+      team.filter(q => q !== p).forEach(q => {
+        const i = p.partners.lastIndexOf(q.id); if (i >= 0) p.partners.splice(i, 1);
+      });
+      foes.forEach(q => {
+        const i = p.opponents.lastIndexOf(q.id); if (i >= 0) p.opponents.splice(i, 1);
+      });
+    });
+    unlink(S1, S2); unlink(S2, S1);
     m.result = null;
   }
 
   function recordResult(ri, mi, result) {
     const m = ts.rounds[ri].matches[mi];
-    if (!m || m.p2 === 'BYE') return;
+    if (!m) return;
     if (m.result !== null) undoResult(ri, mi);
-    const a = fp(m.p1), b = fp(m.p2);
+    const S1 = m.s1.map(fp), S2 = m.s2.map(fp);
     m.result = result;
-    if (result === 'p1')        { a.pts += 1; a.wins++;  b.losses++; }
-    else if (result === 'draw') { a.pts += 0.5; b.pts += 0.5; a.draws++; b.draws++; }
-    else                        { b.pts += 1; b.wins++;  a.losses++; }
-    a.opponents.push(m.p2);
-    b.opponents.push(m.p1);
+    if (result === 's1')      { S1.forEach(p => { p.pts += 1; p.wins++; }); S2.forEach(p => { p.losses++; }); }
+    else if (result === 's2') { S2.forEach(p => { p.pts += 1; p.wins++; }); S1.forEach(p => { p.losses++; }); }
+    else { [...S1, ...S2].forEach(p => { p.pts += 0.5; p.draws++; }); }
+    const link = (team, foes) => team.forEach(p => {
+      team.filter(q => q !== p).forEach(q => p.partners.push(q.id));
+      foes.forEach(q => p.opponents.push(q.id));
+    });
+    link(S1, S2); link(S2, S1);
     computeBuchholz();
     tSave();
   }
@@ -154,12 +249,9 @@
 
   // ── Tournament flow ────────────────────────────────────────────────────
   function startTournament() {
-    // Validate names
     const names = ts.participants.map(p => p.name.trim());
     if (names.some(n => !n)) { alert('Todos los participantes deben tener nombre.'); return false; }
     if (new Set(names).size !== names.length) { alert('Hay nombres duplicados.'); return false; }
-
-    // Apply trimmed names
     ts.participants.forEach(p => { p.name = p.name.trim(); });
 
     const nr = parseInt($('tNumRounds').value, 10);
@@ -244,6 +336,16 @@
   }
 
   // ── Render: Setup ──────────────────────────────────────────────────────
+  function setupHint() {
+    const n = ts.participants.length;
+    if (n < 4) return `Mínimo 4 participantes (${n}/4)`;
+    const unit = ts.type === 'individual' ? 'jugador' : 'pareja';
+    const rest = n % (ts.type === 'individual' ? 4 : 2);
+    let txt = `${n} ${unit}${n !== 1 ? 's' : ''}`;
+    if (rest > 0) txt += ` · descansa${rest !== 1 ? 'n' : ''} ${rest} por ronda (bye)`;
+    return txt;
+  }
+
   function renderSetup() {
     $('tSetupTitle').textContent = ts.type === 'individual' ? 'Torneo Individual' : 'Torneo en Parejas';
     const ph = ts.type === 'individual' ? 'Nombre del jugador' : 'Nombre de la pareja';
@@ -262,20 +364,21 @@
     $('tNumRounds').value = ts.numRounds;
     $('tStartBtn').disabled = n < 4;
     $('tAddParticipant').disabled = n >= 40;
-    $('tSetupHint').textContent = n < 4
-      ? `Mínimo 4 participantes (${n}/4)`
-      : `${n} participante${n !== 1 ? 's' : ''}`;
+    $('tSetupHint').textContent = setupHint();
   }
 
   // ── Render: Round ──────────────────────────────────────────────────────
   function renderRound() {
     const round = ts.rounds[ts.rounds.length - 1];
     const ri = ts.rounds.length - 1;
-    const playable = round.matches.filter(m => m.p2 !== 'BYE');
-    const done = playable.filter(m => m.result !== null).length;
+    const done = round.matches.filter(m => m.result !== null).length;
 
     $('tRoundLabel').textContent = `Ronda ${round.number} / ${ts.numRounds}`;
-    $('tRoundProgress').textContent = `${done} / ${playable.length} resultados`;
+    $('tRoundProgress').textContent = `${done} / ${round.matches.length} resultados`;
+
+    const sideLbl = ts.type === 'individual' ? 'Equipo' : 'Pareja';
+    $('tThS1').textContent = `${sideLbl} 1`;
+    $('tThS2').textContent = `${sideLbl} 2`;
 
     const isLast = ts.rounds.length >= ts.numRounds;
     $('tNextRoundBtn').disabled = !roundComplete(round);
@@ -284,42 +387,45 @@
     const tbody = $('tMatchRows');
     tbody.innerHTML = '';
     round.matches.forEach((m, mi) => {
-      const isBye = m.p2 === 'BYE';
-      const a = fp(m.p1);
-      const b = isBye ? null : fp(m.p2);
-      const aName = a ? a.name : '?';
-      const bName = isBye ? 'BYE' : (b ? b.name : '?');
+      const n1 = sideNames(m.s1);
+      const n2 = sideNames(m.s2);
 
       let res = '';
-      if (isBye) {
-        res = `<span class="t-bye-lbl">Victoria automática</span>`;
-      } else if (m.result === null) {
+      if (m.result === null) {
         res = `<span class="t-res-pend">— tocar —</span>`;
       } else {
-        const txt = m.result === 'p1' ? `✓ ${esc(aName)}`
+        const txt = m.result === 's1' ? `✓ ${esc(n1)}`
                   : m.result === 'draw' ? '½ Empate'
-                  : `✓ ${esc(bName)}`;
+                  : `✓ ${esc(n2)}`;
         res = `<span class="t-res-done">${txt}</span>`;
       }
 
-      const warnHtml = m.repeated ? ` <span class="t-rep-warn" title="Ya jugaron antes">⚠</span>` : '';
+      const warnHtml = m.repeated ? ` <span class="t-rep-warn" title="Cruce o compañero repetido">⚠</span>` : '';
       const cls = [
         m.result !== null ? 'match-done' : '',
-        m.repeated       ? 'match-rep'  : '',
-        isBye            ? 'match-bye'  : ''
+        m.repeated       ? 'match-rep'  : ''
       ].filter(Boolean).join(' ');
-      const clickAttrs = isBye ? '' : ` data-ri="${ri}" data-mi="${mi}" style="cursor:pointer"`;
 
       tbody.insertAdjacentHTML('beforeend',
-        `<tr class="${cls}"${clickAttrs}>` +
+        `<tr class="${cls}" data-ri="${ri}" data-mi="${mi}" style="cursor:pointer">` +
         `<td class="t-td-mesa">${m.table}</td>` +
-        `<td class="t-td-p1">${esc(aName)}</td>` +
+        `<td class="t-td-p1">${esc(n1)}</td>` +
         `<td class="t-td-vs">vs</td>` +
-        `<td class="t-td-p2">${esc(bName)}</td>` +
+        `<td class="t-td-p2">${esc(n2)}</td>` +
         `<td class="t-td-res">${res}${warnHtml}</td>` +
         `</tr>`
       );
     });
+
+    if (round.byes && round.byes.length) {
+      tbody.insertAdjacentHTML('beforeend',
+        `<tr class="match-bye">` +
+        `<td class="t-td-mesa">—</td>` +
+        `<td colspan="4"><span class="t-bye-lbl">💤 Descansa${round.byes.length !== 1 ? 'n' : ''}: ` +
+        `${esc(sideNames(round.byes))} (+1 pt c/u)</span></td>` +
+        `</tr>`
+      );
+    }
   }
 
   // ── Render: Standings ──────────────────────────────────────────────────
@@ -372,12 +478,11 @@
 
   function openModal(ri, mi) {
     const m = ts.rounds[ri].matches[mi];
-    if (!m || m.p2 === 'BYE') return;
-    const a = fp(m.p1), b = fp(m.p2);
+    if (!m) return;
     mRi = ri; mMi = mi;
     $('tResultTitle').textContent = `Mesa ${m.table}`;
-    $('tResP1').textContent = a ? a.name : '?';
-    $('tResP2').textContent = b ? b.name : '?';
+    $('tResP1').textContent = sideNames(m.s1);
+    $('tResP2').textContent = sideNames(m.s2);
     $('tResultOverlay').classList.add('open');
   }
 
@@ -388,10 +493,8 @@
 
   // ── Events ─────────────────────────────────────────────────────────────
   function initEvents() {
-    // Game view → tournament
     $('openTournBtn').onclick = switchToTournView;
 
-    // Tournament topbar
     $('tBackBtn').onclick = () => {
       if (ts.status === 'setup') {
         if (!confirm('¿Abandonar la configuración del torneo?')) return;
@@ -401,7 +504,6 @@
     };
     $('tStandingsBtn').onclick = () => { renderStandings(); showScreen('tScreenStandings'); };
 
-    // Selector
     $('tSelIndividual').onclick = () => {
       ts.type = 'individual'; ts.status = 'setup'; ts.participants = []; ts.rounds = []; ts.numRounds = 4;
       tSave(); renderSetup(); showScreen('tScreenSetup');
@@ -412,7 +514,6 @@
     };
     $('tContinueBtn').onclick = renderCurrentScreen;
 
-    // Setup
     $('tAddParticipant').onclick = () => {
       if (ts.participants.length >= 40) return;
       ts.participants.push(newParticipant());
@@ -425,11 +526,8 @@
       const inp = e.target.closest('.t-part-input');
       if (!inp) return;
       ts.participants[+inp.dataset.idx].name = inp.value;
-      const n = ts.participants.length;
-      $('tStartBtn').disabled = n < 4;
-      $('tSetupHint').textContent = n < 4
-        ? `Mínimo 4 participantes (${n}/4)`
-        : `${n} participante${n !== 1 ? 's' : ''}`;
+      $('tStartBtn').disabled = ts.participants.length < 4;
+      $('tSetupHint').textContent = setupHint();
       tSave();
     });
 
@@ -449,7 +547,6 @@
       if (startTournament()) { renderRound(); showScreen('tScreenRound'); }
     };
 
-    // Round
     $('tMatchRows').addEventListener('click', e => {
       const tr = e.target.closest('tr[data-ri]');
       if (!tr) return;
@@ -457,7 +554,6 @@
     });
     $('tNextRoundBtn').onclick = advanceRound;
 
-    // Standings
     $('tStandingsBackBtn').onclick = () => { renderRound(); showScreen('tScreenRound'); };
     $('tNewTournBtn').onclick = () => {
       if (confirm('¿Comenzar un nuevo torneo? Se perderán todos los datos del torneo actual.')) {
@@ -465,15 +561,14 @@
       }
     };
 
-    // Result modal
     const applyResult = result => {
       if (mRi === null) return;
       recordResult(mRi, mMi, result);
       closeModal(); renderRound();
     };
-    $('tResP1').onclick = () => applyResult('p1');
+    $('tResP1').onclick = () => applyResult('s1');
     $('tResDraw').onclick = () => applyResult('draw');
-    $('tResP2').onclick = () => applyResult('p2');
+    $('tResP2').onclick = () => applyResult('s2');
     $('tResCancel').onclick = closeModal;
     $('tResultOverlay').addEventListener('click', e => {
       if (e.target === $('tResultOverlay')) closeModal();
@@ -481,6 +576,7 @@
   }
 
   // ── Boot ────────────────────────────────────────────────────────────────
+  localStorage.removeItem('domino_tourn_v1');
   tLoad();
   initEvents();
   updateTournBtn();
