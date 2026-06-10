@@ -54,9 +54,22 @@
   function computeBuchholz() {
     for (const p of ts.participants) {
       p.buchholz = p.opponents
-        .filter(o => o !== 'BYE')
         .reduce((s, oid) => { const o = fp(oid); return s + (o ? o.pts : 0); }, 0);
     }
+  }
+
+  const played = p => p.wins + p.draws + p.losses;
+  const groupSize = () => ts.type === 'individual' ? 4 : 2;
+
+  // Participants short of numRounds games, counting an unplayed seat in the
+  // current round as a scheduled game.
+  function deficits() {
+    const cur = ts.rounds[ts.rounds.length - 1];
+    return ts.participants.filter(p => {
+      const pending = cur && cur.matches.some(m =>
+        m.result === null && (m.s1.includes(p.id) || m.s2.includes(p.id))) ? 1 : 0;
+      return played(p) + pending < ts.numRounds;
+    });
   }
 
   // ── Algorithm: Sort ───────────────────────────────────────────────────
@@ -67,37 +80,53 @@
   }
 
   // ── Algorithm: pairs mode — 1 pair-unit vs 1 pair-unit (backtracking) ──
+  // Phase A: exhaustive search for a globally clean matching (no repeats),
+  // bounded by a node budget. Phase B: clean-first with least-conflicting
+  // fallback per slot, guaranteed to terminate.
   function pairUnits(rem) {
     const pairs = [];
     const used = new Set();
+    let budget = 0;
 
-    function bt(idx) {
+    function bt(idx, allowRep) {
+      if (!allowRep && ++budget > 200000) return false;
       while (idx < rem.length && used.has(rem[idx].id)) idx++;
       if (idx >= rem.length) return true;
       const p1 = rem[idx];
       used.add(p1.id);
-      // Pass 1: avoid repeated opponents
+      // Clean candidates: avoid repeated opponents
       for (let j = idx + 1; j < rem.length; j++) {
         const p2 = rem[j];
         if (used.has(p2.id) || metAsOpp(p1, p2)) continue;
         used.add(p2.id);
         pairs.push({ a: p1.id, b: p2.id, rep: false });
-        if (bt(idx + 1)) return true;
+        if (bt(idx + 1, allowRep)) return true;
         used.delete(p2.id); pairs.pop();
       }
-      // Pass 2: allow repeats (last resort)
-      for (let j = idx + 1; j < rem.length; j++) {
-        const p2 = rem[j];
-        if (used.has(p2.id)) continue;
-        used.add(p2.id);
-        pairs.push({ a: p1.id, b: p2.id, rep: true });
-        if (bt(idx + 1)) return true;
-        used.delete(p2.id); pairs.pop();
+      if (allowRep) {
+        // Last resort: fewest prior meetings first
+        const cands = [];
+        for (let j = idx + 1; j < rem.length; j++) {
+          const p2 = rem[j];
+          if (used.has(p2.id)) continue;
+          cands.push({ p2, n: p1.opponents.filter(o => o === p2.id).length });
+        }
+        cands.sort((x, y) => x.n - y.n);
+        for (const c of cands) {
+          used.add(c.p2.id);
+          pairs.push({ a: p1.id, b: c.p2.id, rep: true });
+          if (bt(idx + 1, true)) return true;
+          used.delete(c.p2.id); pairs.pop();
+        }
       }
       used.delete(p1.id);
       return false;
     }
-    bt(0);
+
+    if (!bt(0, false)) {
+      pairs.length = 0; used.clear();
+      bt(0, true);
+    }
 
     return pairs.map((pr, i) => ({
       table: i + 1, s1: [pr.a], s2: [pr.b], result: null, repeated: pr.rep
@@ -105,20 +134,47 @@
   }
 
   // ── Algorithm: individual mode — tables of 4, two teams of 2 ──────────
+  // For a table [a,b,c,d] sorted by standing, the 3 possible team splits.
+  // Repeat rival as rival weighs heaviest; former partners reseated as
+  // rivals (or vice versa) weigh less; repeat partner as partner is worst.
+  function tableSplits(t) {
+    const [a, b, c, d] = t;
+    return [
+      [[a, d], [b, c]],
+      [[a, c], [b, d]],
+      [[a, b], [c, d]]
+    ];
+  }
+
+  function splitScore(s1, s2) {
+    let sc = 0;
+    if (metAsPartner(s1[0], s1[1])) sc += 10;
+    if (metAsPartner(s2[0], s2[1])) sc += 10;
+    for (const x of s1) for (const y of s2) {
+      if (metAsOpp(x, y)) sc += 4;
+      if (metAsPartner(x, y)) sc += 1;
+    }
+    return sc;
+  }
+
+  // Lowest achievable conflict for seating these 4 together (0 = clean)
+  function tablePenalty(t) {
+    let best = Infinity;
+    for (const [s1, s2] of tableSplits(t)) best = Math.min(best, splitScore(s1, s2));
+    return best;
+  }
+
   // Constraint: nobody at the table has previously been partner OR opponent
-  // of anyone else seated there (pass 1); relaxed with flag if impossible.
+  // of anyone else seated there. Phase A searches exhaustively for a fully
+  // clean grouping (node-budgeted); Phase B falls back per slot to the
+  // least-conflicting tables (sorted by penalty) and flags them.
   function tablesOf4(rem) {
     const tables = [];
     const used = new Set();
+    let budget = 0;
 
-    const cleanTable = t => {
-      for (let i = 0; i < 4; i++)
-        for (let j = i + 1; j < 4; j++)
-          if (metAnyhow(t[i], t[j])) return false;
-      return true;
-    };
-
-    function bt(idx) {
+    function bt(idx, allowRep) {
+      if (!allowRep && ++budget > 200000) return false;
       while (idx < rem.length && used.has(rem[idx].id)) idx++;
       if (idx >= rem.length) return true;
       const a = rem[idx];
@@ -128,46 +184,53 @@
         if (!used.has(rem[j].id)) avail.push(rem[j]);
       }
 
-      const tryTriples = allowRep => {
+      const tryTable = (t, rep) => {
+        t.slice(1).forEach(p => used.add(p.id));
+        tables.push({ members: t, rep });
+        if (bt(idx + 1, allowRep)) return true;
+        tables.pop();
+        t.slice(1).forEach(p => used.delete(p.id));
+        return false;
+      };
+
+      // Clean tables, closest in standings first
+      for (let i = 0; i < avail.length; i++)
+        for (let j = i + 1; j < avail.length; j++)
+          for (let l = j + 1; l < avail.length; l++) {
+            const t = [a, avail[i], avail[j], avail[l]];
+            if (tablePenalty(t) > 0) continue;
+            if (tryTable(t, false)) return true;
+          }
+
+      if (allowRep) {
+        // Least-conflicting tables first (last resort)
+        const cands = [];
         for (let i = 0; i < avail.length; i++)
           for (let j = i + 1; j < avail.length; j++)
             for (let l = j + 1; l < avail.length; l++) {
               const t = [a, avail[i], avail[j], avail[l]];
-              if (!allowRep && !cleanTable(t)) continue;
-              t.slice(1).forEach(p => used.add(p.id));
-              tables.push({ members: t, rep: allowRep && !cleanTable(t) });
-              if (bt(idx + 1)) return true;
-              tables.pop();
-              t.slice(1).forEach(p => used.delete(p.id));
+              const pen = tablePenalty(t);
+              if (pen > 0) cands.push({ t, pen });
             }
-        return false;
-      };
+        cands.sort((x, y) => x.pen - y.pen);
+        for (const c of cands) {
+          if (tryTable(c.t, true)) return true;
+        }
+      }
 
-      if (tryTriples(false)) return true;
-      if (tryTriples(true)) return true;
       used.delete(a.id);
       return false;
     }
-    bt(0);
 
-    // Split each table into 2 teams of 2, minimizing repeated relationships.
-    // Default seeding: 1&4 vs 2&3 (members come sorted by standing).
+    if (!bt(0, false)) {
+      tables.length = 0; used.clear();
+      bt(0, true);
+    }
+
     return tables.map((tb, i) => {
-      const [a, b, c, d] = tb.members;
-      const splits = [
-        [[a, d], [b, c]],
-        [[a, c], [b, d]],
-        [[a, b], [c, d]]
-      ];
-      let best = splits[0], bestScore = Infinity;
-      for (const [s1, s2] of splits) {
-        let sc = 0;
-        if (metAsPartner(s1[0], s1[1])) sc += 10;
-        if (metAsPartner(s2[0], s2[1])) sc += 10;
-        for (const x of s1) for (const y of s2) {
-          if (metAsOpp(x, y)) sc += 2;
-          if (metAsPartner(x, y)) sc += 1;
-        }
+      let best = null, bestScore = Infinity;
+      for (const [s1, s2] of tableSplits(tb.members)) {
+        const sc = splitScore(s1, s2);
         if (sc < bestScore) { bestScore = sc; best = [s1, s2]; }
       }
       return {
@@ -181,30 +244,38 @@
   }
 
   // ── Algorithm: round generation ────────────────────────────────────────
-  function generatePairings() {
+  // pool: participants playing this round (all of them for normal rounds,
+  // only the rested ones for the make-up round). Resters earn nothing —
+  // they recover their game in the extra round at the end.
+  function generateRound(pool, extra) {
     computeBuchholz();
-    const sorted = sortedStandings();
-    const groupSize = ts.type === 'individual' ? 4 : 2;
-    const k = sorted.length % groupSize;
+    const ranking = sortedStandings();
+    const sorted = ranking.filter(p => pool.includes(p));
+    const gs = groupSize();
+    const k = sorted.length % gs;
 
-    // Byes: the k lowest-ranked with fewest accumulated byes rest this round
     const byes = [];
     if (k > 0) {
-      const cand = sorted
-        .map((p, rank) => ({ p, rank }))
-        .sort((x, y) => x.p.byeCount - y.p.byeCount || y.rank - x.rank);
-      byes.push(...cand.slice(0, k).map(c => c.p));
-      for (const p of byes) {
-        p.byeCount++;
-        p.pts += 1;
-        p.opponents.push('BYE');
+      // Resters will meet in the make-up round: prefer candidates with no
+      // prior table-mates among those already rested (including the ones
+      // picked this same round), so that round can be paired cleanly too.
+      const rested = ts.participants.filter(p => p.byeCount > 0);
+      for (let i = 0; i < k; i++) {
+        const pool = [...rested, ...byes];
+        const conf = p => pool.reduce((s, q) => s + (q !== p && metAnyhow(p, q) ? 1 : 0), 0);
+        const cand = sorted
+          .filter(p => !byes.includes(p))
+          .map((p, rank) => ({ p, rank, conf: conf(p) }))
+          .sort((x, y) => x.p.byeCount - y.p.byeCount || x.conf - y.conf || y.rank - x.rank);
+        byes.push(cand[0].p);
       }
+      for (const p of byes) p.byeCount++;
     }
 
     const rem = sorted.filter(p => !byes.includes(p));
     const matches = ts.type === 'individual' ? tablesOf4(rem) : pairUnits(rem);
 
-    return { number: ts.rounds.length + 1, matches, byes: byes.map(p => p.id) };
+    return { number: ts.rounds.length + 1, matches, byes: byes.map(p => p.id), extra: !!extra };
   }
 
   // ── Result management ──────────────────────────────────────────────────
@@ -258,27 +329,40 @@
     if (!nr || nr < 1) { alert('Número de rondas inválido.'); return false; }
     ts.numRounds = nr;
     ts.status = 'active';
-    ts.rounds.push(generatePairings());
+    ts.rounds.push(generateRound(ts.participants, false));
     tSave();
     return true;
   }
+
+  function mainRoundsDone() { return ts.rounds.filter(r => !r.extra).length; }
 
   function advanceRound() {
     const cur = ts.rounds[ts.rounds.length - 1];
     if (!roundComplete(cur)) return;
 
-    if (ts.rounds.length >= ts.numRounds) {
-      ts.status = 'finished';
-      computeBuchholz();
+    if (mainRoundsDone() < ts.numRounds) {
+      ts.rounds.push(generateRound(ts.participants, false));
       tSave();
-      renderStandings();
-      showScreen('tScreenStandings');
+      renderRound();
+      showScreen('tScreenRound');
       return;
     }
-    ts.rounds.push(generatePairings());
+
+    // Main rounds done: make-up round(s) so everyone reaches numRounds games
+    const D = deficits();
+    if (D.length >= groupSize()) {
+      ts.rounds.push(generateRound(D, true));
+      tSave();
+      renderRound();
+      showScreen('tScreenRound');
+      return;
+    }
+
+    ts.status = 'finished';
+    computeBuchholz();
     tSave();
-    renderRound();
-    showScreen('tScreenRound');
+    renderStandings();
+    showScreen('tScreenStandings');
   }
 
   function clearTournament() {
@@ -342,7 +426,7 @@
     const unit = ts.type === 'individual' ? 'jugador' : 'pareja';
     const rest = n % (ts.type === 'individual' ? 4 : 2);
     let txt = `${n} ${unit}${n !== 1 ? 's' : ''}`;
-    if (rest > 0) txt += ` · descansa${rest !== 1 ? 'n' : ''} ${rest} por ronda (bye)`;
+    if (rest > 0) txt += ` · descansa${rest !== 1 ? 'n' : ''} ${rest} por ronda y juegan ronda extra al final`;
     return txt;
   }
 
@@ -373,16 +457,20 @@
     const ri = ts.rounds.length - 1;
     const done = round.matches.filter(m => m.result !== null).length;
 
-    $('tRoundLabel').textContent = `Ronda ${round.number} / ${ts.numRounds}`;
+    $('tRoundLabel').textContent = round.extra
+      ? 'Ronda extra · recuperación'
+      : `Ronda ${round.number} / ${ts.numRounds}`;
     $('tRoundProgress').textContent = `${done} / ${round.matches.length} resultados`;
 
     const sideLbl = ts.type === 'individual' ? 'Equipo' : 'Pareja';
     $('tThS1').textContent = `${sideLbl} 1`;
     $('tThS2').textContent = `${sideLbl} 2`;
 
-    const isLast = ts.rounds.length >= ts.numRounds;
     $('tNextRoundBtn').disabled = !roundComplete(round);
-    $('tNextRoundBtn').textContent = isLast ? 'Ver Clasificación Final' : 'Siguiente ronda →';
+    let nextTxt;
+    if (mainRoundsDone() < ts.numRounds) nextTxt = 'Siguiente ronda →';
+    else nextTxt = deficits().length >= groupSize() ? 'Ronda extra →' : 'Ver Clasificación Final';
+    $('tNextRoundBtn').textContent = nextTxt;
 
     const tbody = $('tMatchRows');
     tbody.innerHTML = '';
@@ -422,7 +510,7 @@
         `<tr class="match-bye">` +
         `<td class="t-td-mesa">—</td>` +
         `<td colspan="4"><span class="t-bye-lbl">💤 Descansa${round.byes.length !== 1 ? 'n' : ''}: ` +
-        `${esc(sideNames(round.byes))} (+1 pt c/u)</span></td>` +
+        `${esc(sideNames(round.byes))} (juegan ronda extra al final)</span></td>` +
         `</tr>`
       );
     }
@@ -457,13 +545,12 @@
       const ptsS = p.pts % 1 === 0 ? String(p.pts) : p.pts.toFixed(1);
       const bchS = p.buchholz % 1 === 0 ? String(p.buchholz) : p.buchholz.toFixed(1);
       const cls = pos === 1 ? 't-pos-1' : pos === 2 ? 't-pos-2' : pos === 3 ? 't-pos-3' : '';
-      const byeTag = p.byeCount > 0 ? `<span class="t-bye-tag">+${p.byeCount}b</span>` : '';
       tbody.insertAdjacentHTML('beforeend',
         `<tr class="${cls}">` +
         `<td>${pos}</td>` +
         `<td>${esc(p.name)}</td>` +
         `<td>${pj}</td>` +
-        `<td>${p.wins}${byeTag}</td>` +
+        `<td>${p.wins}</td>` +
         `<td>${p.draws}</td>` +
         `<td>${p.losses}</td>` +
         `<td><b>${ptsS}</b></td>` +
